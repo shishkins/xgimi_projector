@@ -19,10 +19,14 @@ class CastKeeper(private val adb: AdbBridge) {
         return pid.isNotEmpty()
     }
 
-    /** Применить стабильные настройки приёмника один раз (имя + режим зеркалирования). */
+    /** Применить настройки приёмника один раз (имя + режим передачи видео). */
     fun applyReceiverSettings() {
         setSetting("server_name", Config.RECEIVER_NAME)
-        setSetting("advertise_video", "false") // только зеркалирование — стабильно, см. docs
+        // Режим передачи видео (а не полного зеркалирования): iPhone отдаёт видеопоток,
+        // приёмник играет нативно — полное разрешение, синхронный звук, без лагов.
+        // Зеркалирование остаётся доступным (advertise_mirroring=true по умолчанию).
+        setSetting("advertise_video", "true")
+        setSetting("resolution", "auto")
         setSetting("boot_auto_start", "true")
         setSetting("run_in_background", "true")
     }
