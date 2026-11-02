@@ -26,8 +26,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # Android SDK предустановлен на ubuntu-latest (ANDROID_SDK_ROOT задан).
+      # Отдельный setup-android не нужен и ломался на устаревшем пакете 'tools'.
 
       - name: Build agent (release, debug-signed)
         run: ./gradlew :app:agent:assembleRelease --no-daemon --stacktrace
