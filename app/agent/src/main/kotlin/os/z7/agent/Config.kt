@@ -28,4 +28,13 @@ object Config {
 
     /** Период проверки, мс. */
     const val WATCH_INTERVAL_MS = 10_000L
+
+    /** Таймаут одной shell-команды через локальный ADB. */
+    const val ADB_CMD_TIMEOUT_MS = 15_000L
+
+    /** Как часто будильник поднимает агента, если система убила процесс. */
+    const val REVIVE_INTERVAL_MS = 5 * 60_000L
+
+    /** Как часто писать «пульс» в лог (агент жив, состояние каста). */
+    const val HEARTBEAT_MS = 30 * 60_000L
 }

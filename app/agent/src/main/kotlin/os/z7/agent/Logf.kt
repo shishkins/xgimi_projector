@@ -13,6 +13,7 @@ import java.util.Locale
  * — читается `adb pull`, разрешений не требует.
  */
 object Logf {
+    private const val MAX_BYTES = 512 * 1024L
     private var file: File? = null
     private val fmt = SimpleDateFormat("MM-dd HH:mm:ss", Locale.US)
 
@@ -30,7 +31,10 @@ object Logf {
     fun w(msg: String) {
         Log.i("z7", msg)
         try {
-            file?.appendText("${fmt.format(Date())}  $msg\n")
+            val f = file ?: return
+            // простая ротация: агент работает неделями, лог не должен расти бесконечно
+            if (f.length() > MAX_BYTES) f.renameTo(File(f.parentFile, "agent.log.1"))
+            f.appendText("${fmt.format(Date())}  $msg\n")
         } catch (_: Exception) {
         }
     }

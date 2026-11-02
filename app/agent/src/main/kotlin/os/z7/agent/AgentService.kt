@@ -1,13 +1,16 @@
 package os.z7.agent
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +23,8 @@ import kotlinx.coroutines.launch
 
 /**
  * Ядро-агент: постоянный фоновый сервис.
- * v0.1 — держит беспроводной каст живым через локальный ADB-мост.
+ * v0.1 — держит беспроводной каст живым через локальный ADB-мост
+ * (наш AirPlay поднят, стоковый каст выключен вне Miracast).
  * Дальше сюда добавятся: обновлятор, перехват HOME, режим Miracast, профили пакетов.
  */
 class AgentService : Service() {
@@ -36,21 +40,53 @@ class AgentService : Service() {
         Logf.init(this)
         startForeground(NOTIF_ID, buildNotification())
         Logf.w("foreground started")
+        scheduleRevive()
         // Настройки приёмника (имя, режим передачи видео) задаются один раз вручную
         // и сохраняются в самом приёмнике — агент их НЕ переустанавливает:
         // команды `am broadcast` к SettingsReceiver через dadb зависают.
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         loopJob = scope.launch {
+            var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
                 castKeeper.ensureCast(miracastActive)
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastBeat >= Config.HEARTBEAT_MS) {
+                    Logf.w("heartbeat: cast=${castKeeper.lastState} miracast=$miracastActive")
+                    lastBeat = now
+                }
                 delay(Config.WATCH_INTERVAL_MS)
             }
         }
         Log.i(TAG, "agent started")
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Каждый startForegroundService() (загрузка, будильник, кнопка) требует startForeground,
+        // даже если сервис уже на переднем плане — иначе система уронит процесс.
+        startForeground(NOTIF_ID, buildNotification())
+        return START_STICKY
+    }
+
+    /**
+     * Будильник-страховка: на проекторе мало памяти, и система может убить процесс агента
+     * без перезапуска. Раз в [Config.REVIVE_INTERVAL_MS] будильник будит [BootReceiver],
+     * а тот поднимает сервис (если он жив — это просто no-op).
+     */
+    private fun scheduleRevive() {
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val pi = PendingIntent.getBroadcast(
+            this, 0,
+            Intent(this, BootReceiver::class.java).setAction(BootReceiver.ACTION_REVIVE),
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        am.setInexactRepeating(
+            AlarmManager.ELAPSED_REALTIME,
+            SystemClock.elapsedRealtime() + Config.REVIVE_INTERVAL_MS,
+            Config.REVIVE_INTERVAL_MS,
+            pi
+        )
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 

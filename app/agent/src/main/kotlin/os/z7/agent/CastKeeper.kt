@@ -36,6 +36,7 @@ class CastKeeper(private val adb: AdbBridge) {
                 adb.run("pm disable-user --user 0 ${Config.STOCK_CAST_PKG}")
             }
             if (receiverRunning()) {
+                if (lastState != "ok") Logf.w("ensureCast: ok (receiver up)")
                 lastState = "ok"
                 return
             }
