@@ -34,9 +34,9 @@ class AgentService : Service() {
         super.onCreate()
         Logf.init(this)
         startForeground(NOTIF_ID, buildNotification())
-        Logf.w("foreground started; applying receiver settings")
-        castKeeper.applyReceiverSettings()
+        Logf.w("foreground started")
         loopJob = scope.launch {
+            castKeeper.applyReceiverSettings() // в IO, не в главном потоке
             while (isActive) {
                 castKeeper.ensureCast()
                 delay(Config.WATCH_INTERVAL_MS)
