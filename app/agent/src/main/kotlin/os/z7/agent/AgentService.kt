@@ -32,7 +32,9 @@ class AgentService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Logf.init(this)
         startForeground(NOTIF_ID, buildNotification())
+        Logf.w("foreground started; applying receiver settings")
         castKeeper.applyReceiverSettings()
         loopJob = scope.launch {
             while (isActive) {

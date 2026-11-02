@@ -17,7 +17,9 @@ class AdbBridge {
     @Synchronized
     private fun connection(): Dadb {
         dadb?.let { return it }
+        Logf.w("dadb: connecting to ${Config.ADB_HOST}:${Config.ADB_PORT}")
         val d = Dadb.create(Config.ADB_HOST, Config.ADB_PORT)
+        Logf.w("dadb: connected")
         dadb = d
         return d
     }
@@ -38,7 +40,7 @@ class AdbBridge {
                 val resp = connection().shell(command)
                 return resp.output
             } catch (e: Exception) {
-                Log.w(TAG, "shell '$command' failed (attempt $attempt): ${e.message}")
+                Logf.w("dadb: shell '$command' failed (attempt $attempt): ${e.javaClass.simpleName}: ${e.message}")
                 close() // переподключимся на следующей попытке
             }
         }

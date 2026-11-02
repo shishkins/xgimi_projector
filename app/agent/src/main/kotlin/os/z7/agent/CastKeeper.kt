@@ -39,9 +39,10 @@ class CastKeeper(private val adb: AdbBridge) {
         try {
             if (receiverRunning()) {
                 lastState = "ok"
+                Logf.w("ensureCast: receiver ok")
                 return
             }
-            Log.i(TAG, "receiver down — restarting cast")
+            Logf.w("ensureCast: receiver down — restarting cast")
             // погасить конкурентов в mDNS (wirelessscreen перезапустится сам; Miracast не теряем)
             for (pkg in Config.STOCK_CAST_PKGS) {
                 adb.run("am force-stop $pkg")
