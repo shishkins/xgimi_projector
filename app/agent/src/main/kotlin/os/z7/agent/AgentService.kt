@@ -35,8 +35,11 @@ class AgentService : Service() {
         Logf.init(this)
         startForeground(NOTIF_ID, buildNotification())
         Logf.w("foreground started")
+        // Настройки приёмника (имя, режим передачи видео) задаются один раз вручную
+        // и сохраняются в самом приёмнике — агент их НЕ переустанавливает:
+        // команды `am broadcast` к SettingsReceiver через dadb зависают.
+        // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         loopJob = scope.launch {
-            castKeeper.applyReceiverSettings() // в IO, не в главном потоке
             while (isActive) {
                 castKeeper.ensureCast()
                 delay(Config.WATCH_INTERVAL_MS)
