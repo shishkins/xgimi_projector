@@ -1,0 +1,154 @@
+# Классификация пакетов XGIMI Z7X (XM13R), GMUI 6.11.101.01_499, Android 9
+# Источник: снапшот device/snapshots/2026-11-02_14-48 + декомпиляция.
+#
+# class:
+#   red    — НЕ ТРОГАТЬ НИКОГДА (ядро Android, железо, шлюз управления).
+#   yellow — отключать ТОЛЬКО после установки и проверки нашей замены.
+#   green  — мусор, безопасно отключить (disable-user) / скрыть (uninstall -k --user 0).
+# action: keep | disable | uninstall-user   (применяет агент/скрипт; для green)
+# status: proposed — предложено, НЕ применялось на устройстве.
+#         Применение — по одному классу за раз с чек-листом из docs/02-safety.md.
+# verify: true — перед отключением обязательно уточнить назначение (декомпиляция/тест).
+#
+# ПРАВИЛО: неизвестный пакет = red, пока не доказано обратное.
+
+meta:
+  device: XGIMI Z7X XM13R
+  gmui: 6.11.101.01_499
+  android: 9
+  total_packages: 100
+  generated: 2026-11-02
+  status: proposed   # ничего ещё не отключалось
+
+# ─────────────────────────── RED ───────────────────────────
+red:
+  android_core:
+    - android
+    - android.ext.services
+    - android.ext.shared
+    - com.android.shell            # наш ADB-доступ
+    - com.android.packageinstaller # установка APK
+    - com.android.certinstaller
+    - com.android.keychain
+    - com.android.inputdevices     # пульт/ввод
+    - com.android.webview          # движок WebView
+    - com.android.externalstorage
+    - com.android.documentsui
+    - com.android.providers.settings
+    - com.android.providers.media
+    - com.android.providers.downloads
+    - com.android.providers.tv
+    - com.android.providers.contacts
+    - com.android.providers.calendar
+    - com.android.providers.userdictionary
+    - com.android.defcontainer
+    - com.android.location.fused
+    - com.android.captiveportallogin   # вход в Wi-Fi с порталом
+    - com.android.proxyhandler
+    - com.android.statementservice
+    - com.android.se
+    - com.android.sharedstoragebackup
+    - com.android.vpndialogs
+    - com.android.htmlviewer
+    - com.android.printspooler
+    - com.android.bluetooth
+  mediatek_hw:
+    - com.mediatek.AIPQDisplay     # обработка картинки (PQ) — критично
+    - com.mediatek.speakerservice  # звук
+    - com.mediatek.androidbox
+    - mediatek.factorymenu.ui      # заводское меню: держим, но НЕ запускаем опасные пункты
+  xgimi_hw_framework:
+    - com.xgimi.xgimiservice       # ★ ШЛЮЗ управления железом (фокус/трапеция/картинка/звук)
+    - com.xgimi.manager            # SDK gmuiapi
+    - com.xgimiui.api
+    - com.xgimi.tof                # автофокус / датчик ToF
+    - com.xgimi.autokst            # автокоррекция трапеции
+    - com.xgimi.soundermodeservice # звуковые режимы
+    - com.xgimi.tvinput            # HDMI-вход
+    - com.xgimi.bluetoothservice
+    - com.xgimi.remote             # сопряжение/работа пульта
+    - com.xgimi.windowsystem
+    - com.xgimi.systemui           # системный UI/OSD
+    - com.xgimi.xgimiframeworkui    # системные диалоги/ресурсы фреймворка
+    - com.xgimi.persistentservice
+    - com.xgimi.gmservice
+    - com.xgimi.config
+    - com.xgimi.shutdown
+    - com.xgimi.xrmservice
+    - com.xgimi.windowsystem
+    - com.xgimi.appdb              # verify: БД приложений/лаунчера — проверить до любых действий
+
+# ────────────────────── YELLOW (замена → проверка → отключение) ──────────────────────
+yellow:
+  launcher_ui:
+    - id: com.xgimi.home
+      role: стоковый лаунчер (HOME)
+      replace_with: os.z7.launcher
+      note: не удалять; снять HOME по умолчанию, оставить для отката
+    - id: com.android.newsettings
+      role: настройки (часть)
+      replace_with: os.z7.settings
+      verify: true
+    - id: com.xgimi.screensaver
+      role: заставка (+реклама)
+      replace_with: наша заставка
+  input:
+    - id: com.sohu.inputmethod.sogou.tv
+      role: китайская клавиатура Sogou
+      replace_with: латиница+кириллица IME
+  cast:
+    - id: com.xgimi.wirelessscreen
+      role: Miracast (WFD) + AirPlay + DLNA
+      action: keep_for_now
+      note: >
+        из него нужен Miracast (com.xgimi.NEWMIRACAST). НЕ отключать,
+        пока не решён каст. Возможно, останется навсегда ради Win+P.
+    - id: com.hpplay.happyplay.aw
+      role: 乐播 Hpplay/Lelink каст
+      action: disabled
+      note: >
+        ОТКЛЮЧЁН 2026-11-02 (pm disable-user) — конкурировал с нашим AirPlay-приёмником
+        в mDNS. Отключение пережило ребут. Вернуть: pm enable.
+  xgimi_services_to_check:
+    # назначение уточнить декомпиляцией до решения; пока НЕ трогаем
+    - { id: com.xgimi.vcontrol,         verify: true, note: возможно голос/пульт }
+    - { id: com.xgimi.inuiserver,       verify: true }
+    - { id: com.xgimi.xhplayer,         verify: true, note: системный плеер? }
+    - { id: com.xgimi.gimiplayer,       verify: true, note: плеер HDMI/медиа? }
+    - { id: com.xgimi.stream.media,     verify: true }
+    - { id: com.xgimi.stream.video,     verify: true }
+    - { id: com.xgimi.user,             verify: true, note: профиль устройства }
+    - { id: com.xgimi.account,          verify: true, note: аккаунт XGIMI; при Device Owner не должно быть активных аккаунтов }
+    - { id: com.xgimi.bootwizard,       verify: true, note: мастер первой настройки; нужен после factory reset }
+    - { id: com.xgimi.smartaccessories, verify: true }
+    - { id: com.xgimi.ota.accessories,  verify: true, note: OTA аксессуаров }
+    - { id: com.xgimi.skinmanager,      verify: true, note: темы оформления }
+    - { id: com.xgimi.skinconfig,       verify: true }
+    - { id: com.xgimi.instruction30,    verify: true, note: обучалка/подсказки }
+
+# ─────────────────────────── GREEN (мусор) ───────────────────────────
+green:
+  ads_telemetry:
+    - { id: com.xgimi.adservice,     action: uninstall-user, why: рекламный сервис }
+    - { id: com.xgimi.atmosphere,    action: uninstall-user, why: «музыкальная стена»/реклама }
+    - { id: com.xgimi.datareporter,  action: uninstall-user, why: телеметрия }
+    - { id: com.xgimi.bugreportsender, action: uninstall-user, why: отправка отчётов }
+    - { id: com.baidu.oases,         action: uninstall-user, why: Baidu SDK/реклама }
+    - { id: com.xgimi.payview,       action: uninstall-user, why: экран оплаты }
+    - { id: com.xgimi.msgcenter,     action: disable,        why: push-сообщения/промо }
+  china_content_cloud:
+    - { id: com.cibn.tv,             action: uninstall-user, why: CIBN (CN-стриминг) }
+    - { id: com.xgimi.doubanfm,      action: uninstall-user, why: Douban FM (CN-радио) }
+    - { id: com.xgimi.duertts,       action: uninstall-user, why: голосовой ассистент Baidu DuerOS }
+    - { id: com.xgimi.newappmarket,  action: disable,        why: CN-магазин приложений (замена — наш каталог) }
+    - { id: com.xgimi.iot,           action: disable,        why: CN IoT; verify }
+    - { id: com.xgimi.xgimiiotserver, action: disable,       why: CN IoT-сервер; verify }
+    - { id: com.xgimi.smartconnect,  action: disable,        why: подключение телефона (CN-облако); verify }
+    - { id: com.xgimi.mobilebridgeservice, action: disable,  why: мост с телефоном (CN); verify }
+    - { id: com.xgimi.mateservice,   action: disable,        why: сопутствующий CN-сервис; verify }
+    - { id: com.xgimi.agilewall,     action: disable,        why: «任意门»/промо-обои; verify — вдруг функция }
+  ota:
+    - { id: com.xgimi.upgrade,       action: disable,        why: OTA XGIMI (чтобы не возвращало рекламу/не закрывало ADB) }
+
+# Третьесторонние (уже стоят пользователем) — не наши, не трогаем:
+#   com.falcofemoralis.hdrezkaapp, com.google.android.youtube.tv, mobi.zona, local.z7x.adb

@@ -1,0 +1,30 @@
+# Проектная документация и ТЗ — НЕ публикуем (по требованию владельца)
+docs/
+
+# Снимки устройства могут содержать серийники/MAC — не коммитим без проверки
+device/snapshots/
+
+# Локальный конфиг устройства (MAC/IP) — не публикуем
+device/*.local.json
+
+# Фото владельца с наклейки: серийный номер, проводной MAC, 入网号 — не публикуем
+docs/inputs_images_and_docs/
+
+# APK (кроме тестовых ассетов в исходниках)
+*.apk
+!app/**/src/**/*.apk
+
+# Ключи подписи — никогда в репозиторий
+*.jks
+*.keystore
+*.pem
+signing/
+
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.cxx/

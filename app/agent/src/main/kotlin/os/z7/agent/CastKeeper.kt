@@ -1,0 +1,65 @@
+package os.z7.agent
+
+import android.util.Log
+
+/**
+ * Держит беспроводной каст живым: следит, что AirPlay-приёмник запущен,
+ * и поднимает его (погасив стоковых конкурентов), если он упал или не стартовал
+ * после загрузки. См. docs/cast-setup.md — почему это делает агент, а не сам приёмник.
+ */
+class CastKeeper(private val adb: AdbBridge) {
+
+    @Volatile
+    var lastState: String = "init"
+        private set
+
+    /** Приёмник запущен? (по наличию процесса) */
+    private fun receiverRunning(): Boolean {
+        val pid = adb.run("pidof ${Config.RECEIVER_PKG}")?.trim().orEmpty()
+        return pid.isNotEmpty()
+    }
+
+    /** Применить стабильные настройки приёмника один раз (имя + режим зеркалирования). */
+    fun applyReceiverSettings() {
+        setSetting("server_name", Config.RECEIVER_NAME)
+        setSetting("advertise_video", "false") // только зеркалирование — стабильно, см. docs
+        setSetting("boot_auto_start", "true")
+        setSetting("run_in_background", "true")
+    }
+
+    private fun setSetting(key: String, value: String) {
+        adb.run(
+            "am broadcast -n ${Config.RECEIVER_PKG}/.SettingsReceiver " +
+                "-a ${Config.RECEIVER_PKG}.SET_SETTING --es key '$key' --es value '$value'"
+        )
+    }
+
+    /** Основной шаг: если приёмник не работает — поднять его. */
+    fun ensureCast() {
+        try {
+            if (receiverRunning()) {
+                lastState = "ok"
+                return
+            }
+            Log.i(TAG, "receiver down — restarting cast")
+            // погасить конкурентов в mDNS (wirelessscreen перезапустится сам; Miracast не теряем)
+            for (pkg in Config.STOCK_CAST_PKGS) {
+                adb.run("am force-stop $pkg")
+            }
+            // запустить приёмник
+            adb.run(
+                "monkey -p ${Config.RECEIVER_PKG} -c android.intent.category.LAUNCHER 1"
+            )
+            Thread.sleep(3_000)
+            lastState = if (receiverRunning()) "restarted" else "launch-failed"
+            Log.i(TAG, "cast state: $lastState")
+        } catch (e: Exception) {
+            lastState = "error: ${e.message}"
+            Log.w(TAG, "ensureCast failed", e)
+        }
+    }
+
+    companion object {
+        private const val TAG = "z7.CastKeeper"
+    }
+}

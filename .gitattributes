@@ -1,0 +1,14 @@
+# Единые окончания строк, чтобы CI на Linux не падал
+* text=auto eol=lf
+*.bat text eol=crlf
+gradlew text eol=lf
+*.ps1 text eol=crlf
+
+# Бинарники — не трогать
+*.jar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.keystore binary
+*.jks binary
