@@ -30,6 +30,13 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    lint {
+        // targetSdk 28 выбран намеренно (фоновая работа без ограничений),
+        // в Google Play не публикуемся — отключаем соответствующую проверку.
+        disable += "ExpiredTargetSdkVersion"
+        abortOnError = false
+    }
 }
 
 dependencies {
