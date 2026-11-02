@@ -11,14 +11,21 @@ object Config {
 
     /**
      * Стоковый каст XGIMI: внутри и AirPlay (waxrain, порт 7100), и Miracast.
-     * AirPlay мешает нашему приёмнику, Miracast нужен — поэтому гасим только вне Miracast.
+     * Его AirPlay перехватывает подключения iPhone, поэтому в обычном режиме пакет выключен
+     * (pm disable-user) и включается только на время Miracast.
      */
     const val STOCK_CAST_PKG = "com.xgimi.wirelessscreen"
     const val STOCK_AIRPLAY_PORT = 7100
 
-    /** Признаки активной Miracast-сессии в mResumedActivity. */
-    val MIRACAST_MARKERS = listOf("com.xgimi.wfd", "MirCastActivity")
+    /** Интент стокового Miracast-приёмника (WifiDisplayActivity). */
+    const val MIRACAST_ACTION = "com.xgimi.NEWMIRACAST"
 
-    /** Период проверки каста, мс. */
+    /** Сколько ждать подключения Windows после нажатия «Cast from Windows». */
+    const val MIRACAST_WAIT_MS = 3 * 60_000L
+
+    /** Сколько ждать после разрыва сессии, прежде чем вернуть проектор в обычный режим. */
+    const val MIRACAST_END_GRACE_MS = 20_000L
+
+    /** Период проверки, мс. */
     const val WATCH_INTERVAL_MS = 10_000L
 }

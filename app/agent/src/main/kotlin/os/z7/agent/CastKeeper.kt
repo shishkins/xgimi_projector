@@ -3,11 +3,11 @@ package os.z7.agent
 /**
  * Держит беспроводной каст в порядке:
  *  1. наш AirPlay-приёмник запущен (поднимает, если упал или не стартовал после загрузки);
- *  2. стоковый AirPlay XGIMI (waxrain в com.xgimi.wirelessscreen) не вещает параллельно.
- *     Иначе iPhone видит «XGIMI Projector», но при подключении попадает на стоковый
- *     (китайское имя, iOS 27 не поддерживает). Отключить только его компонент shell
- *     не может, тумблера в настройках нет (включён жёстко в CastConfig), поэтому гасим
- *     wirelessscreen целиком — но НЕ во время Miracast: он живёт в том же приложении.
+ *  2. вне Miracast-сессии стоковый каст XGIMI выключен. Его AirPlay (waxrain) иначе
+ *     перехватывает подключения iPhone: в списке виден «XGIMI Projector», а соединение
+ *     уходит на стоковый (китайское имя, iOS 27 не поддерживает). Отключить только его
+ *     компонент shell не может, а сам пакет поднимают сервисы XGIMI — поэтому пакет
+ *     выключается целиком (pm disable-user) и включается лишь на время Miracast.
  * См. docs/cast-setup.md.
  */
 class CastKeeper(private val adb: AdbBridge) {
@@ -22,28 +22,18 @@ class CastKeeper(private val adb: AdbBridge) {
         return pid.isNotEmpty()
     }
 
-    /** Стоковый AirPlay слушает свой порт? */
-    private fun stockAirplayListening(): Boolean {
-        val tcp = adb.run("cat /proc/net/tcp /proc/net/tcp6") ?: return false
-        val portHex = ":%04X".format(Config.STOCK_AIRPLAY_PORT)
-        return tcp.lineSequence().any { line ->
-            val f = line.trim().split(Regex("\\s+"))
-            f.size > 3 && f[1].endsWith(portHex) && f[3] == "0A"
-        }
-    }
+    /** Стоковый каст сейчас включён как пакет? */
+    private fun stockCastEnabled(): Boolean =
+        adb.run("pm list packages -e ${Config.STOCK_CAST_PKG}")
+            ?.contains("package:${Config.STOCK_CAST_PKG}") == true
 
-    /** Идёт Miracast-сессия (на экране стоковый WFD-приёмник)? */
-    private fun miracastActive(): Boolean {
-        val top = adb.run("dumpsys activity activities | grep mResumedActivity") ?: return false
-        return Config.MIRACAST_MARKERS.any { top.contains(it) }
-    }
-
-    /** Основной шаг watchdog. */
-    fun ensureCast() {
+    /** Шаг watchdog. [miracastActive] — идёт ли сейчас режим «Трансляция с Windows». */
+    fun ensureCast(miracastActive: Boolean) {
         try {
-            if (stockAirplayListening() && !miracastActive()) {
-                Logf.w("ensureCast: stock AirPlay is up — stopping ${Config.STOCK_CAST_PKG}")
+            if (!miracastActive && stockCastEnabled()) {
+                Logf.w("ensureCast: stock cast enabled outside Miracast — disabling")
                 adb.run("am force-stop ${Config.STOCK_CAST_PKG}")
+                adb.run("pm disable-user --user 0 ${Config.STOCK_CAST_PKG}")
             }
             if (receiverRunning()) {
                 lastState = "ok"

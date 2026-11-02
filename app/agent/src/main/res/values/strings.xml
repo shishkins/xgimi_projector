@@ -2,4 +2,5 @@
 <resources>
     <string name="app_name">XGIMI Projector Agent</string>
     <string name="status_title">XGIMI Projector OS — Agent</string>
+    <string name="cast_from_windows">Cast from Windows</string>
 </resources>

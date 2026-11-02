@@ -33,8 +33,9 @@ function Sh($c) { & $adb -s $S shell $c 2>$null }
 
 if ($Miracast) {
     Write-Host 'Включаю Miracast-режим (Win+K на ПК увидит проектор).'
-    Write-Host 'Проектор уйдёт с домашней Wi-Fi; выход — Назад/Домой на пульте.'
-    Sh 'am start -a com.xgimi.NEWMIRACAST' | Out-Null
+    Write-Host 'Проектор уйдёт с домашней Wi-Fi; после отключения агент сам вернёт его в сеть.'
+    # через кнопку агента: он включит стоковый каст и сам выключит его после сессии
+    Sh 'am start -n os.z7.agent/.CastFromWindowsActivity' | Out-Null
     return
 }
 

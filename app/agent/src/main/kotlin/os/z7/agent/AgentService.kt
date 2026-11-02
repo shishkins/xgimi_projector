@@ -28,6 +28,7 @@ class AgentService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val adb by lazy { AdbBridge(filesDir) }
     private val castKeeper by lazy { CastKeeper(adb) }
+    private val miracast by lazy { MiracastMode(this, adb) }
     private var loopJob: Job? = null
 
     override fun onCreate() {
@@ -41,7 +42,8 @@ class AgentService : Service() {
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         loopJob = scope.launch {
             while (isActive) {
-                castKeeper.ensureCast()
+                val miracastActive = miracast.tick()
+                castKeeper.ensureCast(miracastActive)
                 delay(Config.WATCH_INTERVAL_MS)
             }
         }
