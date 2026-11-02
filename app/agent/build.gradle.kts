@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Постоянный ключ подписи берётся из окружения (GitHub Secrets → CI).
+// Без него (локальная сборка) используется debug-ключ.
+val releaseKeystore: String? = System.getenv("KEYSTORE_FILE")
+
 android {
     namespace = "os.z7.agent"
     compileSdk = 34
@@ -16,10 +20,23 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = file(releaseKeystore)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // постоянный ключ, если задан; иначе debug (локально)
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 

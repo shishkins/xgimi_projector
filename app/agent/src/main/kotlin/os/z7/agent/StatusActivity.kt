@@ -16,7 +16,7 @@ import android.widget.TextView
 class StatusActivity : Activity() {
 
     private lateinit var text: TextView
-    private val adb = AdbBridge()
+    private val adb by lazy { AdbBridge(filesDir) }
     private val ui = Handler(Looper.getMainLooper())
 
     override fun onCreate(savedInstanceState: Bundle?) {

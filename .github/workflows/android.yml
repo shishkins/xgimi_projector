@@ -29,7 +29,17 @@ jobs:
       # Android SDK предустановлен на ubuntu-latest (ANDROID_SDK_ROOT задан).
       # Отдельный setup-android не нужен и ломался на устаревшем пакете 'tools'.
 
-      - name: Build agent (release, debug-signed)
+      - name: Decode release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+
+      - name: Build agent (release, signed)
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :app:agent:assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK

@@ -26,8 +26,8 @@ import kotlinx.coroutines.launch
 class AgentService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val adb = AdbBridge()
-    private val castKeeper = CastKeeper(adb)
+    private val adb by lazy { AdbBridge(filesDir) }
+    private val castKeeper by lazy { CastKeeper(adb) }
     private var loopJob: Job? = null
 
     override fun onCreate() {
