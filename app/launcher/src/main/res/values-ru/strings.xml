@@ -7,5 +7,6 @@
     <string name="airplay">AirPlay</string>
     <string name="cast_from_windows">Трансляция с Windows</string>
     <string name="settings">Настройки</string>
+    <string name="wifi">Wi-Fi</string>
     <string name="launch_failed">Не удалось открыть приложение</string>
 </resources>

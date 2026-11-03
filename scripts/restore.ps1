@@ -67,6 +67,10 @@ Write-Host '=== 3b. Возвращаю стоковую оптимизацию �
 # агент выключает её, чтобы будильник мог поднимать его после режима ожидания (см. Config.MEM_OPTIMISE_PROP)
 Sh 'setprop persist.xgimi.mem_optimise.enable true' | Out-Null
 
+Write-Host '=== 3c. Возвращаю заводской язык системы (zh-CN, после перезагрузки) ==='
+# агент меняет китайский на английский (SystemLocale.kt); пока агент установлен, он сделает это снова
+Sh 'setprop persist.sys.locale zh-CN' | Out-Null
+
 if ($RemoveOurApps) {
     Write-Host '=== 4. Удаляю наши приложения os.z7.* ==='
     $ours = (Sh 'pm list packages os.z7') + (Sh 'pm list packages local.z7x')

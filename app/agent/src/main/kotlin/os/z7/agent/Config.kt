@@ -9,6 +9,9 @@ object Config {
     /** Открытый AirPlay-приёмник (UxPlay). См. docs/cast-setup.md. */
     const val RECEIVER_PKG = "io.github.jqssun.airplay"
 
+    /** Действие, по которому BootReceiver приёмника стартует сервер без окна. */
+    const val RECEIVER_START_ACTION = "android.intent.action.QUICKBOOT_POWERON"
+
     /**
      * Стоковый каст XGIMI: внутри и AirPlay (waxrain, порт 7100), и Miracast.
      * Его AirPlay перехватывает подключения iPhone, поэтому в обычном режиме пакет выключен
@@ -62,6 +65,9 @@ object Config {
      * Агент держит его в `false`; restore.ps1 возвращает `true`.
      */
     const val MEM_OPTIMISE_PROP = "persist.xgimi.mem_optimise.enable"
+
+    /** Язык системы по умолчанию вместо китайского прошивки (см. [SystemLocale]). */
+    const val DEFAULT_LOCALE = "en-US"
 
     /** Как часто писать «пульс» в лог (агент жив, состояние каста). */
     const val HEARTBEAT_MS = 30 * 60_000L

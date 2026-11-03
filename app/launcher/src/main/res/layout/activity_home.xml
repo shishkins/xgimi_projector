@@ -19,7 +19,7 @@
         android:paddingEnd="72dp"
         android:paddingBottom="64dp">
 
-        <!-- шапка: имя устройства слева, часы и дата справа -->
+        <!-- шапка: имя устройства слева; справа значки состояния, часы и дата -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -33,6 +33,19 @@
                 android:text="@string/device_name"
                 android:textColor="@color/text_secondary"
                 android:textSize="20sp" />
+
+            <ImageView
+                android:id="@+id/status_wifi"
+                style="@style/StatusButton"
+                android:contentDescription="@string/wifi"
+                android:src="@drawable/ic_wifi_off" />
+
+            <ImageView
+                android:id="@+id/status_settings"
+                style="@style/StatusButton"
+                android:layout_marginEnd="32dp"
+                android:contentDescription="@string/settings"
+                android:src="@drawable/ic_settings" />
 
             <LinearLayout
                 android:layout_width="wrap_content"

@@ -1,5 +1,8 @@
 package os.z7.agent
 
+import android.content.Context
+import android.content.Intent
+
 /**
  * Держит беспроводной каст в порядке:
  *  1. наш AirPlay-приёмник запущен (поднимает, если упал или не стартовал после загрузки);
@@ -10,7 +13,7 @@ package os.z7.agent
  *     выключается целиком (pm disable-user) и включается лишь на время Miracast.
  * См. docs/cast-setup.md.
  */
-class CastKeeper(private val adb: AdbBridge) {
+class CastKeeper(private val context: Context, private val adb: AdbBridge) {
 
     @Volatile
     var lastState: String = "init"
@@ -27,6 +30,30 @@ class CastKeeper(private val adb: AdbBridge) {
         adb.run("pm list packages -e ${Config.STOCK_CAST_PKG}")
             ?.contains("package:${Config.STOCK_CAST_PKG}") == true
 
+    /**
+     * Запуск сервера приёмника без UI: его BootReceiver (при boot_auto_start=true) поднимает
+     * AirPlayService. Свой BOOT_COMPLETED XGIMI ему не доставляет (см. [Config.REVIVE_INTERVAL_MS]),
+     * поэтому шлём явный QUICKBOOT_POWERON — его приёмник обрабатывает так же, а отправлять его
+     * может обычное приложение. Окно приёмника откроется само при подключении iPhone.
+     */
+    private fun startHeadless() {
+        try {
+            context.sendBroadcast(
+                Intent(Config.RECEIVER_START_ACTION)
+                    .setClassName(Config.RECEIVER_PKG, "${Config.RECEIVER_PKG}.BootReceiver")
+                    .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+            )
+        } catch (e: Exception) {
+            Logf.w("ensureCast: headless broadcast failed: ${e.javaClass.simpleName}: ${e.message}")
+        }
+    }
+
+    /** Если на экране пустое окно ожидания приёмника — вернуться на главный экран. */
+    private fun leaveReceiverScreen() {
+        val resumed = adb.run("dumpsys activity activities | grep mResumedActivity").orEmpty()
+        if (resumed.contains(Config.RECEIVER_PKG)) adb.run("input keyevent KEYCODE_HOME")
+    }
+
     /** Шаг watchdog. [miracastActive] — идёт ли сейчас режим «Трансляция с Windows». */
     fun ensureCast(miracastActive: Boolean) {
         try {
@@ -40,9 +67,16 @@ class CastKeeper(private val adb: AdbBridge) {
                 lastState = "ok"
                 return
             }
-            Logf.w("ensureCast: receiver down — starting it")
-            adb.run("monkey -p ${Config.RECEIVER_PKG} -c android.intent.category.LAUNCHER 1")
+            Logf.w("ensureCast: receiver down — starting it in background")
+            startHeadless()
             Thread.sleep(3_000)
+            if (!receiverRunning()) {
+                // запасной путь: через окно приёмника, и сразу назад на главный экран
+                Logf.w("ensureCast: headless start failed — launching activity")
+                adb.run("monkey -p ${Config.RECEIVER_PKG} -c android.intent.category.LAUNCHER 1")
+                Thread.sleep(3_000)
+                leaveReceiverScreen()
+            }
             lastState = if (receiverRunning()) "restarted" else "launch-failed"
             Logf.w("ensureCast: $lastState")
         } catch (e: Exception) {

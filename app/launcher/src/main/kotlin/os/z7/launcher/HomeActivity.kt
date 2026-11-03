@@ -6,10 +6,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.GridLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,6 +33,17 @@ class HomeActivity : Activity() {
     private lateinit var controls: LinearLayout
     private lateinit var apps: GridLayout
     private lateinit var date: TextView
+    private lateinit var wifi: ImageView
+
+    private val connectivity by lazy { getSystemService(ConnectivityManager::class.java) }
+
+    /** Значок Wi-Fi в шапке следует за сетью по умолчанию. */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) =
+            showWifi(caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+
+        override fun onLost(network: Network) = showWifi(false)
+    }
 
     /** Язык интерфейса: русский, если он системный, иначе английский (системный тут китайский). */
     private val uiLocale: Locale
@@ -50,6 +65,11 @@ class HomeActivity : Activity() {
         controls = findViewById(R.id.controls)
         apps = findViewById(R.id.apps)
         date = findViewById(R.id.date)
+        wifi = findViewById(R.id.status_wifi)
+        // до нашего модуля настроек оба значка открывают стоковые настройки XGIMI
+        wifi.setOnClickListener { launch(Intent().setComponent(STOCK_SETTINGS)) }
+        findViewById<View>(R.id.status_settings).setOnClickListener { launch(Intent().setComponent(STOCK_SETTINGS)) }
+        connectivity.registerDefaultNetworkCallback(networkCallback)
 
         registerReceiver(timeReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_TIME_TICK)
@@ -84,6 +104,7 @@ class HomeActivity : Activity() {
     }
 
     override fun onDestroy() {
+        connectivity.unregisterNetworkCallback(networkCallback)
         unregisterReceiver(timeReceiver)
         unregisterReceiver(packageReceiver)
         super.onDestroy()
@@ -143,6 +164,10 @@ class HomeActivity : Activity() {
         } catch (e: Exception) {
             Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showWifi(connected: Boolean) = runOnUiThread {
+        wifi.setImageResource(if (connected) R.drawable.ic_wifi else R.drawable.ic_wifi_off)
     }
 
     private fun updateDate() {

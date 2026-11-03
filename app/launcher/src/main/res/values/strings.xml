@@ -7,5 +7,6 @@
     <string name="airplay">AirPlay</string>
     <string name="cast_from_windows">Cast from Windows</string>
     <string name="settings">Settings</string>
+    <string name="wifi">Wi-Fi</string>
     <string name="launch_failed">Couldn\'t open the app</string>
 </resources>

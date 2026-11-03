@@ -38,7 +38,7 @@ class AgentService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val adb by lazy { AdbBridge(filesDir) }
-    private val castKeeper by lazy { CastKeeper(adb) }
+    private val castKeeper by lazy { CastKeeper(this, adb) }
     private val miracast by lazy { MiracastMode(this, adb) }
     private val beacon by lazy { P2pBeacon(this) }
     private val audio by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
@@ -75,6 +75,7 @@ class AgentService : Service() {
         loopJob = scope.launch {
             ensureRevivable()
             ensureP2pPermission()
+            SystemLocale(this@AgentService, adb).ensureNotChinese()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
