@@ -46,6 +46,7 @@ class AgentService : Service() {
         // команды `am broadcast` к SettingsReceiver через dadb зависают.
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         loopJob = scope.launch {
+            ensureRevivable()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
@@ -73,6 +74,14 @@ class AgentService : Service() {
      * без перезапуска. Раз в [Config.REVIVE_INTERVAL_MS] будильник будит [BootReceiver],
      * а тот поднимает сервис (если он жив — это просто no-op).
      */
+    private fun ensureRevivable() {
+        val value = adb.run("getprop ${Config.MEM_OPTIMISE_PROP}")?.trim()
+        if (value != "false") {
+            Logf.w("revive: ${Config.MEM_OPTIMISE_PROP}='$value' — setting false")
+            adb.run("setprop ${Config.MEM_OPTIMISE_PROP} false")
+        }
+    }
+
     private fun scheduleRevive() {
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = PendingIntent.getBroadcast(
@@ -80,7 +89,7 @@ class AgentService : Service() {
             Intent(this, BootReceiver::class.java).setAction(BootReceiver.ACTION_REVIVE),
             PendingIntent.FLAG_UPDATE_CURRENT
         )
-        am.setInexactRepeating(
+        am.setRepeating(
             AlarmManager.ELAPSED_REALTIME,
             SystemClock.elapsedRealtime() + Config.REVIVE_INTERVAL_MS,
             Config.REVIVE_INTERVAL_MS,

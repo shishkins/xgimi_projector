@@ -63,6 +63,10 @@ Write-Host '=== 3. Сбрасываю HOME на стоковый лаунчер 
 Sh 'cmd package set-home-activity com.xgimi.home/com.xgimi.module.cellview.home.ui.HomeActivity' | Out-Null
 Sh 'pm enable com.xgimi.home' | Out-Null
 
+Write-Host '=== 3b. Возвращаю стоковую оптимизацию памяти XGIMI ==='
+# агент выключает её, чтобы будильник мог поднимать его после режима ожидания (см. Config.MEM_OPTIMISE_PROP)
+Sh 'setprop persist.xgimi.mem_optimise.enable true' | Out-Null
+
 if ($RemoveOurApps) {
     Write-Host '=== 4. Удаляю наши приложения os.z7.* ==='
     $ours = (Sh 'pm list packages os.z7') + (Sh 'pm list packages local.z7x')
