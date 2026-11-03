@@ -12,6 +12,9 @@ object Config {
     /** Действие, по которому BootReceiver приёмника стартует сервер без окна. */
     const val RECEIVER_START_ACTION = "android.intent.action.QUICKBOOT_POWERON"
 
+    /** Сколько ждать запуска приёмника без окна, прежде чем открыть его окно. */
+    const val RECEIVER_HEADLESS_WAIT_MS = 12_000L
+
     /**
      * Стоковый каст XGIMI: внутри и AirPlay (waxrain, порт 7100), и Miracast.
      * Его AirPlay перехватывает подключения iPhone, поэтому в обычном режиме пакет выключен

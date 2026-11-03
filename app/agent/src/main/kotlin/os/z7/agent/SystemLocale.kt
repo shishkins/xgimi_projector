@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.LocaleList
+import android.provider.Settings
 import java.util.Locale
 
 /**
@@ -27,6 +28,10 @@ class SystemLocale(private val context: Context, private val adb: AdbBridge) {
     fun set(locale: Locale) {
         if (context.checkSelfPermission(PERM) != PackageManager.PERMISSION_GRANTED) {
             adb.run("pm grant ${context.packageName} $PERM")
+        }
+        // updatePersistentConfiguration проверяет ещё и WRITE_SETTINGS (app-op)
+        if (!Settings.System.canWrite(context)) {
+            adb.run("appops set ${context.packageName} WRITE_SETTINGS allow")
         }
         try {
             val am = Class.forName("android.app.ActivityManager").getMethod("getService").invoke(null)!!

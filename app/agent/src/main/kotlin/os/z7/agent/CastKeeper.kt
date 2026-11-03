@@ -48,6 +48,16 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
         }
     }
 
+    /** Холодный старт процесса на проекторе занимает несколько секунд — ждём с опросом. */
+    private fun awaitReceiver(timeoutMs: Long): Boolean {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(1_000)
+            if (receiverRunning()) return true
+        }
+        return false
+    }
+
     /** Если на экране пустое окно ожидания приёмника — вернуться на главный экран. */
     private fun leaveReceiverScreen() {
         val resumed = adb.run("dumpsys activity activities | grep mResumedActivity").orEmpty()
@@ -69,8 +79,7 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
             }
             Logf.w("ensureCast: receiver down — starting it in background")
             startHeadless()
-            Thread.sleep(3_000)
-            if (!receiverRunning()) {
+            if (!awaitReceiver(Config.RECEIVER_HEADLESS_WAIT_MS)) {
                 // запасной путь: через окно приёмника, и сразу назад на главный экран
                 Logf.w("ensureCast: headless start failed — launching activity")
                 adb.run("monkey -p ${Config.RECEIVER_PKG} -c android.intent.category.LAUNCHER 1")
