@@ -57,6 +57,8 @@ object KeystoneScreen {
         ).apply { windowAnimations = 0 }
 
         fun open() {
+            // лёгкое затемнение: рамка и ориентир читаются поверх любой картинки, а она видна
+            frame.setBackgroundColor(context.getColor(R.color.keystone_scrim))
             view.addView(frame, FrameLayout.LayoutParams(MATCH, MATCH))
             // карточка внизу: центр экрана занят ориентиром
             view.addView(card(), FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
@@ -258,14 +260,6 @@ object KeystoneScreen {
             canvas.drawLine(cx + gap, cy, cx + reach, cy, target)
             canvas.drawLine(cx, cy - reach, cx, cy - gap, target)
             canvas.drawLine(cx, cy + gap, cx, cy + reach, target)
-            // засечки на круге через 45°
-            for (k in 0 until 8) {
-                if (k % 2 == 0) continue
-                val a = Math.toRadians(45.0 * k)
-                val cos = Math.cos(a).toFloat()
-                val sin = Math.sin(a).toFloat()
-                canvas.drawLine(cx + cos * r * TICK_FROM, cy + sin * r * TICK_FROM, cx + cos * r, cy + sin * r, targetThin)
-            }
             canvas.drawCircle(cx, cy, dot, center)
         }
 
@@ -306,7 +300,6 @@ object KeystoneScreen {
     private const val INNER_RING = 0.35f
     private const val CROSS_GAP = 0.12f
     private const val CROSS_REACH = 1.18f
-    private const val TICK_FROM = 0.86f
 
     /** Шаг сдвига угла в пикселях панели (как у XGIMI: 6 × 3.375). */
     private const val STEP_X = 6
