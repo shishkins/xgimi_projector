@@ -42,6 +42,8 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
                 Intent(Config.RECEIVER_START_ACTION)
                     .setClassName(Config.RECEIVER_PKG, "${Config.RECEIVER_PKG}.BootReceiver")
                     .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
+                    // фоновая очередь после загрузки/установки забита рассылками на десятки секунд
+                    .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)
             )
         } catch (e: Exception) {
             Logf.w("ensureCast: headless broadcast failed: ${e.javaClass.simpleName}: ${e.message}")
