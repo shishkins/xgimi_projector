@@ -70,10 +70,10 @@ object Config {
     const val MEM_OPTIMISE_PROP = "persist.xgimi.mem_optimise.enable"
 
     /**
-     * Язык системы вместо китайского прошивки (см. [SystemLocale]). Не английский: его
-     * настройки XGIMI откатывают на китайский. При русском меню XGIMI — на английском.
+     * Язык системы вместо китайского прошивки (см. [SystemLocale]): английский кодом `eng`,
+     * потому что `en` настройки XGIMI откатывают на китайский.
      */
-    const val DEFAULT_LOCALE = "ru-RU"
+    const val DEFAULT_LOCALE = "eng-US"
 
     /** Как часто писать «пульс» в лог (агент жив, состояние каста). */
     const val HEARTBEAT_MS = 30 * 60_000L

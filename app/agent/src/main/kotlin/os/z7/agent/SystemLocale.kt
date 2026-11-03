@@ -18,16 +18,18 @@ import java.util.Locale
 class SystemLocale(private val context: Context, private val adb: AdbBridge) {
 
     /**
-     * Китайский (и английский, см. ниже) системный язык → [Config.DEFAULT_LOCALE].
-     * Английский нельзя: настройки XGIMI при `en` возвращают систему на zh-CN и не открываются
-     * («English is no longer supported», SettingService.showWindow). Любой другой язык они пропускают,
-     * а свои тексты для него берут из базовых ресурсов — английских.
+     * Системный язык → [Config.DEFAULT_LOCALE], если стоит другой.
+     * Обычный `en` нельзя: настройки XGIMI при language=="en" возвращают систему на zh-CN и не
+     * открываются («English is no longer supported», SettingService.showWindow). Поэтому английский
+     * задаём трёхбуквенным кодом `eng`: проверку XGIMI он проходит, а приложения, у которых нет
+     * ресурсов под `eng`, берут базовые — английские (Android, установщик, названия приложений).
      */
     fun ensureSupported() {
         val current = Resources.getSystem().configuration.locales[0]
-        if (current.language != "zh" && current.language != "en") return
-        Logf.w("locale: system is $current — switching to ${Config.DEFAULT_LOCALE}")
-        set(Locale.forLanguageTag(Config.DEFAULT_LOCALE))
+        val target = Locale.forLanguageTag(Config.DEFAULT_LOCALE)
+        if (current.language == target.language) return
+        Logf.w("locale: system is $current — switching to $target")
+        set(target)
     }
 
     fun set(locale: Locale) {
