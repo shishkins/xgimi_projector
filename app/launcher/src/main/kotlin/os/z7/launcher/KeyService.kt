@@ -24,11 +24,13 @@ class KeyService : AccessibilityService() {
 
     private val main = Handler(Looper.getMainLooper())
     private lateinit var panel: QuickPanel
+    private lateinit var cover: AkCover
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         panel = QuickPanel(this)
+        cover = AkCover(this)
         // классы gmpf грузятся из APK настроек ~1 с — заранее, а не при первом открытии
         Gmpf.warmUp(this)
     }
@@ -46,18 +48,31 @@ class KeyService : AccessibilityService() {
         return false
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    /** Окно автотрапеции XGIMI появилось или исчезло — накрыть или убрать китайскую подпись. */
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (!::cover.isInitialized) return
+        val akShown = try {
+            windows.any { it.title?.toString() == AK_WINDOW_TITLE }
+        } catch (e: Exception) {
+            false
+        }
+        if (akShown) cover.show() else cover.hide()
+    }
 
     override fun onInterrupt() {}
 
     override fun onDestroy() {
         if (instance === this) instance = null
         if (::panel.isInitialized) panel.dismiss()
+        if (::cover.isInitialized) cover.hide()
         super.onDestroy()
     }
 
     companion object {
         private const val KEY_QUICK_MENU = KeyEvent.KEYCODE_MOVE_HOME
+
+        /** Заголовок окна калибровки XGIMI (com.xgimi.systemui AK2Window). */
+        private const val AK_WINDOW_TITLE = "trapezoidAdj"
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null

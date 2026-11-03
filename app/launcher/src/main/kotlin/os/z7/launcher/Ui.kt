@@ -11,8 +11,10 @@ import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 
 /**
@@ -41,9 +43,31 @@ object Ui {
         isFocusable = true
         isClickable = true
         background = context.getDrawable(R.drawable.card_bg)
-        setOnFocusChangeListener { v, focused ->
-            val s = if (focused) scale else 1f
-            v.animate().scaleX(s).scaleY(s).setDuration(FOCUS_ANIM_MS).setInterpolator(DecelerateInterpolator()).start()
+        setOnFocusChangeListener { v, focused -> onFocus(v, focused, scale) }
+    }
+
+    /** Увеличение в фокусе; родителям разрешаем рисовать карточку за своими краями. */
+    fun onFocus(v: View, focused: Boolean, scale: Float) {
+        if (focused) unclipAncestors(v)
+        val s = if (focused) scale else 1f
+        v.animate().scaleX(s).scaleY(s).setDuration(FOCUS_ANIM_MS).setInterpolator(DecelerateInterpolator()).start()
+    }
+
+    /**
+     * Увеличенная карточка выходит за края родителя, а ViewGroup по умолчанию обрезает детей
+     * по своим отступам — рамка фокуса выглядела срезанной. Прокрутку не трогаем: без обрезки
+     * она рисовала бы уехавшие строки поверх заголовка.
+     */
+    private fun unclipAncestors(view: View) {
+        var p = view.parent
+        while (p is ViewGroup) {
+            if (p is ScrollView || p is HorizontalScrollView) {
+                p.clipToPadding = false
+                break
+            }
+            p.clipChildren = false
+            p.clipToPadding = false
+            p = p.parent
         }
     }
 

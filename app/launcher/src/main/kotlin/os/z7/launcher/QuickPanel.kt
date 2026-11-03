@@ -161,7 +161,8 @@ class QuickPanel(private val service: Context) {
         autoKeystone.setOnClickListener {
             closeThen {
                 Gmpf.run(service, { it.autoKeystone() }) { ok ->
-                    toast(context, if (ok == true) R.string.auto_keystone_started else R.string.action_failed)
+                    // ход калибровки показывает экран XGIMI (с нашей плашкой, см. AkCover)
+                    if (ok != true) toast(context, R.string.action_failed)
                 }
             }
         }

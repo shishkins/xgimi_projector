@@ -50,8 +50,7 @@ class SettingsActivity : Activity() {
         sections.forEachIndexed { i, s ->
             val row = Ui.Row(this, s.iconRes, getString(s.titleRes))
             row.setOnFocusChangeListener { v, focused ->
-                val scale = if (focused) Ui.ROW_FOCUS_SCALE else 1f
-                v.animate().scaleX(scale).scaleY(scale).setDuration(Ui.FOCUS_ANIM_MS).start()
+                Ui.onFocus(v, focused, Ui.ROW_FOCUS_SCALE)
                 if (focused) showSection(i)
             }
             row.setOnClickListener { contentScroll.requestFocus(View.FOCUS_RIGHT) }
@@ -110,7 +109,7 @@ class SettingsActivity : Activity() {
 
     private fun projection(c: LinearLayout) {
         c.addView(row(R.drawable.ic_keystone, R.string.quick_auto_keystone) {
-            Gmpf.run(this, { it.autoKeystone() }) { ok -> toast(if (ok == true) R.string.auto_keystone_started else R.string.action_failed) }
+            Gmpf.run(this, { it.autoKeystone() }) { ok -> if (ok != true) toast(R.string.action_failed) }
         })
         c.addView(row(R.drawable.ic_corners, R.string.quick_keystone) {
             if (!KeystoneScreen.show(this)) toast(R.string.keys_service_off)

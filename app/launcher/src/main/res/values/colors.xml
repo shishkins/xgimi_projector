@@ -17,4 +17,6 @@
     <color name="bar_track">#33FFFFFF</color>
     <color name="grid_line">#40FFFFFF</color>
     <color name="handle_idle">#99FFFFFF</color>
+    <!-- цвет плашки калибровки XGIMI, которую мы накрываем -->
+    <color name="ak_pill">#FF437AF5</color>
 </resources>

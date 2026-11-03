@@ -58,7 +58,10 @@ object KeystoneScreen {
 
         fun open() {
             view.addView(frame, FrameLayout.LayoutParams(MATCH, MATCH))
-            view.addView(card(), FrameLayout.LayoutParams(WRAP, WRAP, Gravity.CENTER))
+            // карточка внизу: центр экрана занят ориентиром
+            view.addView(card(), FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+                bottomMargin = Ui.dp(context, CARD_BOTTOM_DP)
+            })
             view.isFocusable = true
             view.isFocusableInTouchMode = true
             view.alpha = 0f
@@ -151,21 +154,22 @@ object KeystoneScreen {
             }
         }
 
+        /** Одна строка: слева название и выбранный угол, справа подсказки по кнопкам. */
         private fun card(): View = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             background = GradientDrawable().apply {
                 setColor(context.getColor(R.color.panel_bg))
-                cornerRadius = Ui.dp(context, 24).toFloat()
+                cornerRadius = Ui.dp(context, 22).toFloat()
             }
-            setPadding(Ui.dp(context, 40), Ui.dp(context, 28), Ui.dp(context, 40), Ui.dp(context, 28))
-            addView(Ui.text(context, context.getString(R.string.quick_keystone), 28f), LinearLayout.LayoutParams(WRAP, WRAP))
-            addView(cornerLabel, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = Ui.dp(context, 6) })
-            val hints = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
+            setPadding(Ui.dp(context, 28), Ui.dp(context, 16), Ui.dp(context, 22), Ui.dp(context, 16))
+            val titles = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+            titles.addView(Ui.text(context, context.getString(R.string.quick_keystone), 22f))
+            titles.addView(cornerLabel.apply { textSize = 15f })
+            addView(titles, LinearLayout.LayoutParams(Ui.dp(context, TITLE_DP), WRAP))
             for ((key, label) in HINTS) {
-                hints.addView(hint(context.getString(key), context.getString(label)))
+                addView(hint(context.getString(key), context.getString(label)))
             }
-            addView(hints, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = Ui.dp(context, 22) })
         }
 
         private fun hint(key: String, label: String) = LinearLayout(context).apply {
@@ -202,6 +206,18 @@ object KeystoneScreen {
             strokeWidth = Ui.dp(context, 3).toFloat()
             color = context.getColor(R.color.text_primary)
         }
+        private val target = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = Ui.dp(context, 3).toFloat()
+            strokeCap = Paint.Cap.ROUND
+            color = context.getColor(R.color.text_primary)
+        }
+        private val targetThin = Paint(target).apply {
+            strokeWidth = Ui.dp(context, 2).toFloat()
+            color = context.getColor(R.color.handle_idle)
+        }
+        private val center = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.accent) }
+        private val dot = Ui.dp(context, 5).toFloat()
         private val error = context.getColor(R.color.error)
         private val accent = context.getColor(R.color.accent)
         private val radius = Ui.dp(context, 16).toFloat()
@@ -229,15 +245,41 @@ object KeystoneScreen {
             invalidate()
         }
 
+        /**
+         * Ориентир в центре: на ровной картинке круг круглый, а перекрестие прямое.
+         * Сплющенный круг или косой крест сразу показывают, куда тянет изображение.
+         */
+        private fun drawTarget(canvas: Canvas, cx: Float, cy: Float, r: Float) {
+            canvas.drawCircle(cx, cy, r, target)
+            canvas.drawCircle(cx, cy, r * INNER_RING, targetThin)
+            val gap = r * CROSS_GAP
+            val reach = r * CROSS_REACH
+            canvas.drawLine(cx - reach, cy, cx - gap, cy, target)
+            canvas.drawLine(cx + gap, cy, cx + reach, cy, target)
+            canvas.drawLine(cx, cy - reach, cx, cy - gap, target)
+            canvas.drawLine(cx, cy + gap, cx, cy + reach, target)
+            // засечки на круге через 45°
+            for (k in 0 until 8) {
+                if (k % 2 == 0) continue
+                val a = Math.toRadians(45.0 * k)
+                val cos = Math.cos(a).toFloat()
+                val sin = Math.sin(a).toFloat()
+                canvas.drawLine(cx + cos * r * TICK_FROM, cy + sin * r * TICK_FROM, cx + cos * r, cy + sin * r, targetThin)
+            }
+            canvas.drawCircle(cx, cy, dot, center)
+        }
+
         override fun onDraw(canvas: Canvas) {
             val w = width.toFloat()
             val h = height.toFloat()
             val half = line.strokeWidth / 2
             for (k in 1 until GRID) {
+                if (k * 2 == GRID) continue // через центр идёт перекрестие ориентира
                 canvas.drawLine(w * k / GRID, 0f, w * k / GRID, h, grid)
                 canvas.drawLine(0f, h * k / GRID, w, h * k / GRID, grid)
             }
             canvas.drawRect(half, half, w - half, h - half, line)
+            drawTarget(canvas, w / 2, h / 2, h * TARGET_RADIUS)
             val points = listOf(inset to inset, w - inset to inset, w - inset to h - inset, inset to h - inset)
             points.forEachIndexed { i, (x, y) ->
                 if (i == selected) {
@@ -256,6 +298,15 @@ object KeystoneScreen {
     private const val PULSE_MS = 700L
     private const val FLASH_MS = 300L
     private const val GRID = 4
+    private const val CARD_BOTTOM_DP = 48
+    private const val TITLE_DP = 230
+
+    /** Ориентир: радиус круга — доля высоты экрана, остальное — доли радиуса. */
+    private const val TARGET_RADIUS = 0.26f
+    private const val INNER_RING = 0.35f
+    private const val CROSS_GAP = 0.12f
+    private const val CROSS_REACH = 1.18f
+    private const val TICK_FROM = 0.86f
 
     /** Шаг сдвига угла в пикселях панели (как у XGIMI: 6 × 3.375). */
     private const val STEP_X = 6

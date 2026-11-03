@@ -23,7 +23,7 @@
     <string name="quick_brightness">Яркость</string>
     <string name="quick_size">Размер изображения</string>
     <string name="size_full">Полный</string>
-    <string name="auto_keystone_started">Выравниваю изображение…</string>
+    <string name="auto_keystone_running">Выравниваю изображение</string>
     <string name="key_service_label">Z7 Кнопки пульта</string>
     <string name="key_service_description">Открывает панель быстрых настроек по долгому нажатию кнопки «Меню».</string>
     <string name="keys_service_off">Служба кнопок пульта выключена — перезагрузите проектор</string>

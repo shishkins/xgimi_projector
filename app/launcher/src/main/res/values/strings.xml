@@ -24,7 +24,7 @@
     <string name="quick_brightness">Brightness</string>
     <string name="quick_size">Picture Size</string>
     <string name="size_full">Full</string>
-    <string name="auto_keystone_started">Correcting the picture…</string>
+    <string name="auto_keystone_running">Correcting the picture</string>
     <string name="key_service_label">Z7 Remote Keys</string>
     <string name="key_service_description">Opens the quick settings panel on a long press of the Menu button.</string>
     <string name="keys_service_off">Remote keys service is off — restart the projector</string>
