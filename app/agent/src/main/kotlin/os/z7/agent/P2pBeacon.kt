@@ -53,6 +53,17 @@ class P2pBeacon(private val context: Context) {
         })
     }
 
+    /** Сбросить текущую P2P-группу, чтобы Windows переподключилась к уже открытому приёмнику. */
+    fun dropGroup() {
+        val mgr = manager ?: return
+        val ch = channel ?: mgr.initialize(context, Looper.getMainLooper(), null).also { channel = it }
+        mgr.removeGroup(ch, object : WifiP2pManager.ActionListener {
+            override fun onSuccess() = Logf.w("p2p: first link dropped, waiting for Windows to reconnect")
+
+            override fun onFailure(reason: Int) = Logf.w("p2p: removeGroup failed reason=$reason")
+        })
+    }
+
     /** Логируем только смену состояния, иначе лог забьётся каждые полторы минуты. */
     private fun report(result: String) {
         if (result != lastResult) Logf.w("p2p beacon: $result")

@@ -32,12 +32,21 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         begin(connected = false)
     }
 
-    /** Windows уже подключилась по P2P (Win+K) — поднять приёмник как можно быстрее. */
+    /**
+     * Windows постучалась по P2P (Win+K): открыть стоковый приёмник.
+     * Эту первую группу вызывающий затем сбрасывает (см. AgentService): она поднята, пока
+     * проектор был в домашней сети, поэтому сидит на её канале 2.4 ГГц (лаги, отставание звука),
+     * а сток к тому же пропускает начало RTSP-сессии. Windows переподключается сама, уже к
+     * готовому приёмнику, который отключил домашнюю сеть, и канал выбирается свободно.
+     * Поэтому стартуем в режиме ожидания (connected=false), а не «уже подключено».
+     * @return true, если сессия начата сейчас (а не шла уже).
+     */
     @Synchronized
-    fun onIncoming() {
-        if (isRequested) return
+    fun onIncoming(): Boolean {
+        if (isRequested) return false
         Logf.w("miracast: incoming Win+K connection — opening receiver")
-        begin(connected = true)
+        begin(connected = false)
+        return true
     }
 
     private fun begin(connected: Boolean) {

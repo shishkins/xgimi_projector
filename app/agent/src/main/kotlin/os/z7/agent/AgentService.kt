@@ -49,7 +49,12 @@ class AgentService : Service() {
             val info = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
             if (info?.groupFormed == true) {
                 Logf.w("p2p: group formed (owner=${info.isGroupOwner})")
-                scope.launch { miracast.onIncoming() }
+                scope.launch {
+                    if (miracast.onIncoming()) {
+                        delay(Config.MIRACAST_RECEIVER_READY_MS) // приёмник открылся и отключил домашнюю сеть
+                        beacon.dropGroup()
+                    }
+                }
             }
         }
     }
