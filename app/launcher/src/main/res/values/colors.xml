@@ -3,11 +3,18 @@
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color>
     <color name="accent">#FF4C8DFF</color>
+    <color name="error">#FFFF5A5F</color>
     <color name="wall_top">#FF10162B</color>
     <color name="wall_bottom">#FF05070D</color>
     <color name="wall_glow">#FF2A2160</color>
     <color name="tile_idle">#1FFFFFFF</color>
     <color name="tile_idle_stroke">#24FFFFFF</color>
     <color name="tile_focused">#3DFFFFFF</color>
-    <color name="panel_bg">#F0121626</color>
+    <color name="panel_bg">#F2111522</color>
+    <color name="card_idle">#14FFFFFF</color>
+    <color name="card_focused">#38FFFFFF</color>
+    <color name="scrim">#8C000000</color>
+    <color name="bar_track">#33FFFFFF</color>
+    <color name="grid_line">#40FFFFFF</color>
+    <color name="handle_idle">#99FFFFFF</color>
 </resources>

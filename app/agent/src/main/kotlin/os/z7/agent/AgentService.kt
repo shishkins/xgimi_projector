@@ -77,6 +77,7 @@ class AgentService : Service() {
             ensureP2pPermission()
             SystemLocale(this@AgentService, adb).ensureSupported()
             ensureKeyService()
+            ensureWifiAccess()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
@@ -138,6 +139,21 @@ class AgentService : Service() {
         }
         if (adb.run("settings get secure accessibility_enabled")?.trim() != "1") {
             adb.run("settings put secure accessibility_enabled 1")
+        }
+    }
+
+    /**
+     * Свой экран Wi-Fi лаунчера: Android 9 отдаёт приложению список сетей только с разрешением
+     * на геолокацию и при включённой геолокации. Поставщик network лишь помечается разрешённым —
+     * местоположение никто не запрашивает. Откат: restore.ps1.
+     */
+    private fun ensureWifiAccess() {
+        if (adb.run("pm path ${Config.LAUNCHER_PKG}").isNullOrBlank()) return
+        adb.run("pm grant ${Config.LAUNCHER_PKG} ${Manifest.permission.ACCESS_FINE_LOCATION}")
+        val providers = adb.run("settings get secure location_providers_allowed")?.trim().orEmpty()
+        if (!providers.split(',').contains(Config.LOCATION_PROVIDER)) {
+            Logf.w("wifi: allowing location provider '${Config.LOCATION_PROVIDER}' for scan results")
+            adb.run("settings put secure location_providers_allowed +${Config.LOCATION_PROVIDER}")
         }
     }
 

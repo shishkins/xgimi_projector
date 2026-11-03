@@ -48,6 +48,8 @@ class HomeActivity : Activity() {
     private val uiLocale: Locale
         get() = UiLanguage.locale(this)
 
+    private var language = ""
+
     override fun attachBaseContext(newBase: Context) = super.attachBaseContext(UiLanguage.wrap(newBase))
 
     private val timeReceiver = object : BroadcastReceiver() {
@@ -67,9 +69,9 @@ class HomeActivity : Activity() {
         apps = findViewById(R.id.apps)
         date = findViewById(R.id.date)
         wifi = findViewById(R.id.status_wifi)
-        // до нашего модуля настроек значки открывают страницы стоковых настроек XGIMI
-        wifi.setOnClickListener { openStockSettings(StockSettings.WIFI) }
-        findViewById<View>(R.id.status_settings).setOnClickListener { openStockSettings(StockSettings.MAIN) }
+        wifi.setOnClickListener { launch(Intent(this, WifiActivity::class.java)) }
+        findViewById<View>(R.id.status_settings).setOnClickListener { launch(Intent(this, SettingsActivity::class.java)) }
+        language = UiLanguage.code(this)
         connectivity.registerDefaultNetworkCallback(networkCallback)
 
         registerReceiver(timeReceiver, IntentFilter().apply {
@@ -88,6 +90,11 @@ class HomeActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        // язык сменили в наших настройках — пересобрать экран с новыми строками
+        if (UiLanguage.code(this) != language) {
+            recreate()
+            return
+        }
         updateDate()
         // агента мог убить режим ожидания XGIMI — главный экран поднимает его каждый раз
         (application as LauncherApp).startAgent()
@@ -148,7 +155,7 @@ class HomeActivity : Activity() {
             }
         }
         list += Tiles.action(this, R.drawable.ic_settings, getString(R.string.settings)) {
-            openStockSettings(StockSettings.MAIN)
+            launch(Intent(this, SettingsActivity::class.java))
         }
         return list
     }
@@ -163,12 +170,6 @@ class HomeActivity : Activity() {
         try {
             startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
-            Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun openStockSettings(page: String) {
-        if (!StockSettings.open(this, page)) {
             Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
         }
     }

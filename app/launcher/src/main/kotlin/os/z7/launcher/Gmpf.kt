@@ -1,0 +1,181 @@
+package os.z7.launcher
+
+import android.content.Context
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Looper
+import android.util.Log
+import java.lang.reflect.Field
+
+/**
+ * Прямой доступ к железу проектора — тот же слой gmpf, через который работают настройки XGIMI.
+ *
+ * Нативные библиотеки gmpf (`lib*_jni.xgimi.so`) прошивка открывает всем приложениям
+ * (/system/etc/public.libraries.xgimi.txt), а Java-обёртки к ним лежат в APK стоковых настроек.
+ * Мы не копируем их код: грузим классы прямо из APK на устройстве отдельным ClassLoader'ом
+ * и зовём рефлексией. Все вызовы — на своём потоке: нативный слой ходит в HAL синхронно.
+ */
+object Gmpf {
+
+    private const val TAG = "z7.Gmpf"
+    private const val SETTINGS_PKG = "com.android.newsettings"
+
+    private val worker = HandlerThread("gmpf").apply { start() }
+    private val handler = Handler(worker.looper)
+    private val main = Handler(Looper.getMainLooper())
+
+    @Volatile private var bridge: Bridge? = null
+    @Volatile private var unavailable = false
+
+    /** Выполнить [work] на потоке gmpf; [done] получает результат (null — слой недоступен) в главном потоке. */
+    fun <T> run(context: Context, work: (Bridge) -> T, done: (T?) -> Unit = {}) {
+        val app = context.applicationContext
+        handler.post {
+            val value = try {
+                bridge(app)?.let(work)
+            } catch (e: Throwable) {
+                Log.w(TAG, "call failed", e)
+                null
+            }
+            main.post { done(value) }
+        }
+    }
+
+    /**
+     * Запись значения, которое меняется зажатой кнопкой (ползунок, угол трапеции): в железо уходит
+     * только последнее, очередь не копится. Пользоваться из главного потока.
+     */
+    class Latest<V>(private val context: Context, private val apply: (Bridge, V) -> Any?) {
+        private var pending: V? = null
+        private var busy = false
+
+        fun submit(value: V) {
+            pending = value
+            if (!busy) pump()
+        }
+
+        private fun pump() {
+            val value = pending ?: return
+            pending = null
+            busy = true
+            run(context, { apply(it, value) }) {
+                busy = false
+                pump()
+            }
+        }
+    }
+
+    /** Заранее загрузить классы — первое открытие экрана не ждёт загрузки APK. */
+    fun warmUp(context: Context) = run(context, { }) {}
+
+    private fun bridge(context: Context): Bridge? {
+        if (bridge == null && !unavailable) {
+            bridge = try {
+                val apk = context.packageManager.getApplicationInfo(SETTINGS_PKG, 0).sourceDir
+                // родитель — системный загрузчик фреймворка: kotlin и прочие зависимости
+                // классы XGIMI берут из своего APK, а не из нашего
+                val loader = dalvik.system.PathClassLoader(apk, "/system/lib", Context::class.java.classLoader)
+                Bridge(loader)
+            } catch (e: Throwable) {
+                Log.w(TAG, "gmpf unavailable", e)
+                unavailable = true
+                null
+            }
+        }
+        return bridge
+    }
+
+    /** Обёртка над com.xgimi.gmpf.api.*. Методы вызываются только с потока gmpf. */
+    class Bridge(private val loader: ClassLoader) {
+
+        private val displayCls = cls("com.xgimi.gmpf.api.DisplayManager")
+        private val focusCls = cls("com.xgimi.gmpf.api.ProjectorFocusManager")
+        private val display = displayCls.getMethod("getInstance").invoke(null)!!
+        private val focus = focusCls.getMethod("getInstance").invoke(null)!!
+        private val fullCls = cls("com.xgimi.gmpf.rp.KeyStoneFullCoordinates")
+        private val pointCls = cls("com.xgimi.gmpf.rp.KeyStonePoint")
+        private val pointX = pointCls.getField("x")
+        private val pointY = pointCls.getField("y")
+
+        /** Автотрапеция штатным алгоритмом (камера + датчики). */
+        fun autoKeystone(): Boolean = (focusCls.getMethod("autoKst").invoke(focus) as Byte).toInt() != 0
+
+        /**
+         * Углы изображения в пикселях панели 1920×1080, по часовой стрелке:
+         * x,y верхнего левого, верхнего правого, нижнего правого, нижнего левого.
+         */
+        fun corners(): IntArray {
+            val full = fullCls.getConstructor().newInstance()
+            displayCls.getMethod("getCorrectKeystone", fullCls).invoke(display, full)
+            val pts = points(full)
+            return CORNER_CELLS.flatMap { (r, c) -> listOf(pointX.getShort(pts[r][c]).toInt(), pointY.getShort(pts[r][c]).toInt()) }
+                .toIntArray()
+        }
+
+        /** Применить углы; false — прошивка считает такую трапецию недопустимой, ничего не меняем. */
+        fun setCorners(corners: IntArray): Boolean {
+            val full = fullCls.getConstructor().newInstance()
+            fullCls.getField("kstMode").setByte(full, 0) // 4 точки
+            val pts = points(full)
+            CORNER_CELLS.forEachIndexed { i, (r, c) ->
+                pointX.setShort(pts[r][c], corners[i * 2].toShort())
+                pointY.setShort(pts[r][c], corners[i * 2 + 1].toShort())
+            }
+            val ok = displayCls.getMethod("checkTrapezoidCoordinate", fullCls).invoke(display, full) as Boolean
+            if (ok) displayCls.getMethod("correctKeystone", fullCls).invoke(display, full)
+            return ok
+        }
+
+        /** Сброс трапеции к прямоугольнику (как «Сброс» в настройках XGIMI). */
+        fun resetKeystone() {
+            displayCls.getMethod("correctKeystoneReset", Byte::class.javaPrimitiveType).invoke(display, 0.toByte())
+            val mode = displayCls.getMethod("getCurrentKeystoneMode").invoke(display) as Int
+            if (mode == KST_MODE_FREE) {
+                displayCls.getMethod("switchKeystoneMode", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+                    .invoke(display, 0, 0)
+            }
+        }
+
+        /** Цифровое уменьшение изображения: 0 — полный размер, [zoomMax] — самое маленькое. */
+        fun zoom(): Int {
+            val step = cls("com.xgimi.gmpf.rp.ZoomStep").getConstructor().newInstance()
+            displayCls.getMethod("getCurrentZoomStep", step.javaClass).invoke(display, step)
+            return field(step.javaClass, "zoomDigtalstep").getInt(step)
+        }
+
+        fun zoomMax(): Int {
+            val range = cls("com.xgimi.gmpf.rp.ZoomStepRange").getConstructor().newInstance()
+            displayCls.getMethod("getZoomStepRange", range.javaClass).invoke(display, range)
+            return field(range.javaClass, "zoomOutDigtalMaxNum").getInt(range)
+        }
+
+        fun setZoom(step: Int) {
+            displayCls.getMethod("setDigitalZoomStep", Int::class.javaPrimitiveType).invoke(display, step)
+        }
+
+        /** Яркость лампы, 1..[BRIGHTNESS_MAX]. */
+        fun brightness(): Int = (displayCls.getMethod("getDlpLumensLevel").invoke(display) as Byte).toInt()
+
+        fun setBrightness(level: Int) {
+            displayCls.getMethod("setDlpLumensLevel", Byte::class.javaPrimitiveType)
+                .invoke(display, level.coerceIn(1, BRIGHTNESS_MAX).toByte())
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        private fun points(full: Any) = fullCls.getField("coordinates").get(full) as Array<Array<Any>>
+
+        private fun cls(name: String): Class<*> = Class.forName(name, true, loader)
+
+        private fun field(c: Class<*>, name: String): Field = c.getDeclaredField(name).apply { isAccessible = true }
+    }
+
+    const val BRIGHTNESS_MAX = 10
+    const val PANEL_W = 1920
+    const val PANEL_H = 1080
+
+    /** Ячейки сетки 9×9, в которых прошивка хранит 4 угла (режим kstMode=0). */
+    private val CORNER_CELLS = listOf(0 to 0, 0 to 1, 1 to 1, 1 to 0)
+
+    /** Режим «свободной» трапеции, из которого сброс возвращает в обычный 4-точечный. */
+    private const val KST_MODE_FREE = 6
+}

@@ -78,6 +78,10 @@ $rest = ($a11y.Trim() -split ':' | Where-Object { $_ -and $_ -ne 'null' -and $_ 
 if ($rest) { Sh "settings put secure enabled_accessibility_services $rest" | Out-Null }
 else { Sh 'settings delete secure enabled_accessibility_services' | Out-Null }
 
+Write-Host '=== 3e. Выключаю геолокацию, которую агент включал для списка Wi-Fi ==='
+# агент добавляет поставщика network (AgentService.ensureWifiAccess); на заводской прошивке список пуст
+Sh 'settings put secure location_providers_allowed -network' | Out-Null
+
 if ($RemoveOurApps) {
     Write-Host '=== 4. Удаляю наши приложения os.z7.* ==='
     $ours = (Sh 'pm list packages os.z7') + (Sh 'pm list packages local.z7x')

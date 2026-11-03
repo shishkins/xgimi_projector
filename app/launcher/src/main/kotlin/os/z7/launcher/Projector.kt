@@ -4,11 +4,10 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Команды проектора через штатные обработчики XGIMI — те же, что вызывают кнопки пульта
- * (/vendor/etc/xgimi_action_config.xml). Фокус и трапеция живут в нативном слое gmpf,
- * обычному приложению он недоступен, поэтому идём через сервис com.xgimi.windowsystem:
- * он пересылает `type` в com.xgimi.systemui (FocusUIV2.receiveIntent), а тот рисует свой
- * графический экран без текста.
+ * Фокус через штатный обработчик XGIMI — тот же, что у кнопок пульта
+ * (/vendor/etc/xgimi_action_config.xml): сервис com.xgimi.windowsystem пересылает `type`
+ * в com.xgimi.systemui (FocusUIV2.receiveIntent), а тот рисует графический экран фокуса
+ * без текста и сам ведёт мотор. Трапеция, яркость и масштаб — напрямую, см. [Gmpf].
  */
 object Projector {
 
@@ -17,10 +16,8 @@ object Projector {
 
     private const val TYPE_MANUAL_FOCUS = 1
     private const val TYPE_AUTO_FOCUS = 8
-    private const val TYPE_AUTO_KEYSTONE = 10
 
     fun autoFocus(context: Context) = afAk(context, TYPE_AUTO_FOCUS)
-    fun autoKeystone(context: Context) = afAk(context, TYPE_AUTO_KEYSTONE)
     fun manualFocus(context: Context) = afAk(context, TYPE_MANUAL_FOCUS)
 
     private fun afAk(context: Context, type: Int): Boolean = try {

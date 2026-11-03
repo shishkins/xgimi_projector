@@ -4,8 +4,12 @@
 
     <!-- запуск агента (его сервис закрыт signature-разрешением) -->
     <uses-permission android:name="os.z7.permission.CONTROL" />
-    <!-- значок Wi-Fi в шапке -->
+    <!-- значок Wi-Fi в шапке и свой экран Wi-Fi -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- без него Android 9 не отдаёт список сетей; выдаёт агент через pm grant -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
 
@@ -40,6 +44,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <activity
+            android:name=".WifiActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
 
         <!-- кнопки пульта: долгое «меню» → наша быстрая панель (включает агент) -->
         <service

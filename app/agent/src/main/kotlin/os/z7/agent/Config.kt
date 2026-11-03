@@ -13,6 +13,9 @@ object Config {
     const val LAUNCHER_PKG = "os.z7.launcher"
     const val KEY_SERVICE = "os.z7.launcher/os.z7.launcher.KeyService"
 
+    /** Поставщик геолокации, который должен быть «включён», чтобы лаунчер видел сети Wi-Fi. */
+    const val LOCATION_PROVIDER = "network"
+
     /** Действие, по которому BootReceiver приёмника стартует сервер без окна. */
     const val RECEIVER_START_ACTION = "android.intent.action.QUICKBOOT_POWERON"
 
