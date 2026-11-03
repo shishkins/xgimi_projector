@@ -1,13 +1,19 @@
 package os.z7.agent
 
+import android.Manifest
 import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.net.wifi.p2p.WifiP2pInfo
+import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -33,7 +39,20 @@ class AgentService : Service() {
     private val adb by lazy { AdbBridge(filesDir) }
     private val castKeeper by lazy { CastKeeper(adb) }
     private val miracast by lazy { MiracastMode(this, adb) }
+    private val beacon by lazy { P2pBeacon(this) }
     private var loopJob: Job? = null
+
+    /** Windows подключилась по Win+K: P2P-группа сформирована — сразу открываем приёмник. */
+    private val p2pReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (isInitialStickyBroadcast) return // старое состояние на момент регистрации
+            val info = intent.getParcelableExtra<WifiP2pInfo>(WifiP2pManager.EXTRA_WIFI_P2P_INFO)
+            if (info?.groupFormed == true) {
+                Logf.w("p2p: group formed (owner=${info.isGroupOwner})")
+                scope.launch { miracast.onIncoming() }
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -45,11 +64,14 @@ class AgentService : Service() {
         // и сохраняются в самом приёмнике — агент их НЕ переустанавливает:
         // команды `am broadcast` к SettingsReceiver через dadb зависают.
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
+        registerReceiver(p2pReceiver, IntentFilter(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION))
         loopJob = scope.launch {
             ensureRevivable()
+            ensureP2pPermission()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
+                beacon.tick(enabled = !miracastActive)
                 castKeeper.ensureCast(miracastActive)
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {
@@ -82,6 +104,15 @@ class AgentService : Service() {
         }
     }
 
+    /** P2P-поиск требует разрешения на геолокацию; runtime-разрешение выдаём себе через shell. */
+    private fun ensureP2pPermission() {
+        val perm = Manifest.permission.ACCESS_FINE_LOCATION
+        if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) {
+            Logf.w("p2p: granting $perm")
+            adb.run("pm grant $packageName $perm")
+        }
+    }
+
     private fun scheduleRevive() {
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = PendingIntent.getBroadcast(
@@ -102,6 +133,7 @@ class AgentService : Service() {
     override fun onDestroy() {
         loopJob?.cancel()
         scope.cancel()
+        unregisterReceiver(p2pReceiver)
         adb.close()
         super.onDestroy()
     }

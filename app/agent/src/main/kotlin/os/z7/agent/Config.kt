@@ -26,6 +26,12 @@ object Config {
     /** Сколько ждать после разрыва сессии, прежде чем вернуть проектор в обычный режим. */
     const val MIRACAST_END_GRACE_MS = 20_000L
 
+    /** Сколько ждать после HOME, пока сток вернёт домашнюю Wi-Fi (он делает это через ~2 с). */
+    const val MIRACAST_WIFI_RESTORE_MS = 6_000L
+
+    /** Как часто перезапускать P2P-поиск (один поиск держит listen ~2 мин). */
+    const val P2P_DISCOVER_EVERY_MS = 90_000L
+
     /** Период проверки, мс. */
     const val WATCH_INTERVAL_MS = 10_000L
 
