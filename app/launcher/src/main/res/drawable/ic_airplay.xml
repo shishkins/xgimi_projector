@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- экран с треугольником снизу (линейная пиктограмма) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:pathData="M14,32 H8 a2,2 0 0 1 -2,-2 V10 a2,2 0 0 1 2,-2 H40 a2,2 0 0 1 2,2 V30 a2,2 0 0 1 -2,2 H34"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M24,28 L34,41 H14 Z" />
+</vector>

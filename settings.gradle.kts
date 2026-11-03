@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "z7os"
 
 include(":app:agent")
+include(":app:launcher")

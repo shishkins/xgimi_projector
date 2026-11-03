@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- фон окна = обои: первый кадр появляется сразу, без белой вспышки -->
+    <style name="Theme.Home" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/bg_wallpaper</item>
+        <item name="android:colorAccent">@color/accent</item>
+        <item name="android:windowShowWallpaper">false</item>
+    </style>
+
+    <style name="SectionTitle">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">28dp</item>
+        <item name="android:layout_marginBottom">14dp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+</resources>

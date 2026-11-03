@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Home</string>
+    <string name="device_name">XGIMI Projector</string>
+    <string name="section_controls">Controls</string>
+    <string name="section_apps">Apps</string>
+    <string name="airplay">AirPlay</string>
+    <string name="cast_from_windows">Cast from Windows</string>
+    <string name="settings">Settings</string>
+    <string name="launch_failed">Couldn\'t open the app</string>
+</resources>

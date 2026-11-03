@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- модули нашей системы (тот же ключ подписи) управляют агентом; чужим приложениям нельзя -->
+    <permission
+        android:name="os.z7.permission.CONTROL"
+        android:protectionLevel="signature" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -56,10 +61,13 @@
             </intent-filter>
         </activity>
 
+        <!-- exported: главный экран поднимает агента при каждом показе
+             (прошивка XGIMI не будит сторонние приложения по BOOT_COMPLETED) -->
         <service
             android:name=".AgentService"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="true"
+            android:permission="os.z7.permission.CONTROL" />
 
         <receiver
             android:name=".BootReceiver"

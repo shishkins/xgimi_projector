@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Главный экран</string>
+    <string name="device_name">XGIMI Projector</string>
+    <string name="section_controls">Управление</string>
+    <string name="section_apps">Приложения</string>
+    <string name="airplay">AirPlay</string>
+    <string name="cast_from_windows">Трансляция с Windows</string>
+    <string name="settings">Настройки</string>
+    <string name="launch_failed">Не удалось открыть приложение</string>
+</resources>

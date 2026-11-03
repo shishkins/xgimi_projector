@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="accent">#FF4C8DFF</color>
+    <color name="wall_top">#FF10162B</color>
+    <color name="wall_bottom">#FF05070D</color>
+    <color name="wall_glow">#FF2A2160</color>
+    <color name="tile_idle">#1FFFFFFF</color>
+    <color name="tile_idle_stroke">#24FFFFFF</color>
+    <color name="tile_focused">#3DFFFFFF</color>
+</resources>
