@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- не статический: включается/выключается `cmd overlay enable|disable os.z7.overlay.settings` -->
+    <overlay
+        android:priority="1"
+        android:targetPackage="com.android.newsettings" />
+
+    <application
+        android:allowBackup="false"
+        android:hasCode="false"
+        android:label="Z7 Settings Translation" />
+</manifest>
