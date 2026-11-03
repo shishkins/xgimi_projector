@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
@@ -41,6 +42,7 @@ class AgentService : Service() {
     private val castKeeper by lazy { CastKeeper(adb) }
     private val miracast by lazy { MiracastMode(this, adb) }
     private val beacon by lazy { P2pBeacon(this) }
+    private val audio by lazy { getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     private var loopJob: Job? = null
 
     /**
@@ -90,7 +92,9 @@ class AgentService : Service() {
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
-                beacon.tick(enabled = !miracastActive)
+                // Маяк уводит радио с канала домашней сети (пинг 3 → 130–260 мс),
+                // поэтому он работает, только пока на проекторе ничего не играет.
+                beacon.tick(enabled = !miracastActive && !audio.isMusicActive)
                 castKeeper.ensureCast(miracastActive)
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {

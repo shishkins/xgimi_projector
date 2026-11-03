@@ -26,7 +26,10 @@ class P2pBeacon(private val context: Context) {
     private var running = false
     private var lastResult = ""
 
-    /** Шаг цикла агента. [enabled] = false во время Miracast-сессии: P2P ведёт стоковый приёмник. */
+    /**
+     * Шаг цикла агента. [enabled] = false во время Miracast-сессии (P2P ведёт стоковый приёмник)
+     * и пока что-то играет: listen уводит радио с канала домашней сети и ломает стриминг.
+     */
     fun tick(enabled: Boolean) {
         val mgr = manager ?: return
         if (!enabled) {
