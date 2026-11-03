@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.wifi.WifiManager
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import android.os.Build
@@ -42,6 +43,17 @@ class AgentService : Service() {
     private val beacon by lazy { P2pBeacon(this) }
     private var loopJob: Job? = null
 
+    /**
+     * Держим Wi-Fi без энергосбережения. В режиме сна чип копит пакеты и отвечает пачками
+     * раз в ~200 мс (пинг проектора 140–260 мс вместо 2–5): отсюда лаги Miracast
+     * и «догоняющий» звук AirPlay. Проектор всегда от сети, экономить нечего.
+     */
+    private val wifiLock by lazy {
+        (applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager)
+            .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "z7:no-powersave")
+            .apply { setReferenceCounted(false) }
+    }
+
     /** Windows подключилась по Win+K: P2P-группа сформирована — сразу открываем приёмник. */
     private val p2pReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -65,6 +77,8 @@ class AgentService : Service() {
         startForeground(NOTIF_ID, buildNotification())
         Logf.w("foreground started")
         scheduleRevive()
+        wifiLock.acquire()
+        Logf.w("wifi: power save off (high-perf lock)")
         // Настройки приёмника (имя, режим передачи видео) задаются один раз вручную
         // и сохраняются в самом приёмнике — агент их НЕ переустанавливает:
         // команды `am broadcast` к SettingsReceiver через dadb зависают.
@@ -139,6 +153,7 @@ class AgentService : Service() {
         loopJob?.cancel()
         scope.cancel()
         unregisterReceiver(p2pReceiver)
+        if (wifiLock.isHeld) wifiLock.release()
         adb.close()
         super.onDestroy()
     }
