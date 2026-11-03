@@ -9,6 +9,10 @@ object Config {
     /** Открытый AirPlay-приёмник (UxPlay). См. docs/cast-setup.md. */
     const val RECEIVER_PKG = "io.github.jqssun.airplay"
 
+    /** Наш главный экран и его служба кнопок пульта (быстрая панель по долгому «меню»). */
+    const val LAUNCHER_PKG = "os.z7.launcher"
+    const val KEY_SERVICE = "os.z7.launcher/os.z7.launcher.KeyService"
+
     /** Действие, по которому BootReceiver приёмника стартует сервер без окна. */
     const val RECEIVER_START_ACTION = "android.intent.action.QUICKBOOT_POWERON"
 

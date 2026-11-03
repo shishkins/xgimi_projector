@@ -71,6 +71,13 @@ Write-Host '=== 3c. Возвращаю заводской язык систем�
 # агент меняет китайский на английский (SystemLocale.kt); пока агент установлен, он сделает это снова
 Sh 'setprop persist.sys.locale zh-CN' | Out-Null
 
+Write-Host '=== 3d. Выключаю нашу службу кнопок пульта (быстрая панель) ==='
+# долгое «меню» снова откроет стоковое быстрое меню XGIMI
+$a11y = (Sh 'settings get secure enabled_accessibility_services') -join ''
+$rest = ($a11y.Trim() -split ':' | Where-Object { $_ -and $_ -ne 'null' -and $_ -notlike 'os.z7.*' }) -join ':'
+if ($rest) { Sh "settings put secure enabled_accessibility_services $rest" | Out-Null }
+else { Sh 'settings delete secure enabled_accessibility_services' | Out-Null }
+
 if ($RemoveOurApps) {
     Write-Host '=== 4. Удаляю наши приложения os.z7.* ==='
     $ours = (Sh 'pm list packages os.z7') + (Sh 'pm list packages local.z7x')

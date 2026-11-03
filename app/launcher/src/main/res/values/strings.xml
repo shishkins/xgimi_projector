@@ -8,5 +8,21 @@
     <string name="cast_from_windows">Cast from Windows</string>
     <string name="settings">Settings</string>
     <string name="wifi">Wi-Fi</string>
+
+    <string name="quick_title">Quick Settings</string>
+    <string name="quick_auto_focus">Auto Focus</string>
+    <string name="quick_auto_keystone">Auto Keystone</string>
+    <string name="quick_manual_focus">Manual Focus</string>
+    <string name="quick_manual_keystone">Manual Keystone</string>
+    <string name="quick_zoom">Zoom &amp; Shift</string>
+    <string name="quick_volume">Volume</string>
+    <string name="quick_brightness">Brightness</string>
+    <string name="quick_picture_mode">Picture Mode</string>
+    <string name="quick_bluetooth">Bluetooth</string>
+    <string name="quick_all_settings">All Settings</string>
+    <string name="quick_connected">Connected</string>
+    <string name="quick_disconnected">Off</string>
+    <string name="key_service_label">Z7 Remote Keys</string>
+    <string name="key_service_description">Opens the quick settings panel on a long press of the Menu button.</string>
     <string name="launch_failed">Couldn\'t open the app</string>
 </resources>

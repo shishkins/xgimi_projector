@@ -9,4 +9,5 @@
     <color name="tile_idle">#1FFFFFFF</color>
     <color name="tile_idle_stroke">#24FFFFFF</color>
     <color name="tile_focused">#3DFFFFFF</color>
+    <color name="panel_bg">#F0121626</color>
 </resources>

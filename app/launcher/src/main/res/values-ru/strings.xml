@@ -8,5 +8,21 @@
     <string name="cast_from_windows">Трансляция с Windows</string>
     <string name="settings">Настройки</string>
     <string name="wifi">Wi-Fi</string>
+
+    <string name="quick_title">Быстрые настройки</string>
+    <string name="quick_auto_focus">Автофокус</string>
+    <string name="quick_auto_keystone">Автотрапеция</string>
+    <string name="quick_manual_focus">Ручной фокус</string>
+    <string name="quick_manual_keystone">Ручная трапеция</string>
+    <string name="quick_zoom">Масштаб и сдвиг</string>
+    <string name="quick_volume">Громкость</string>
+    <string name="quick_brightness">Яркость</string>
+    <string name="quick_picture_mode">Режим изображения</string>
+    <string name="quick_bluetooth">Bluetooth</string>
+    <string name="quick_all_settings">Все настройки</string>
+    <string name="quick_connected">Подключено</string>
+    <string name="quick_disconnected">Выкл.</string>
+    <string name="key_service_label">Z7 Кнопки пульта</string>
+    <string name="key_service_description">Открывает панель быстрых настроек по долгому нажатию кнопки «Меню».</string>
     <string name="launch_failed">Не удалось открыть приложение</string>
 </resources>

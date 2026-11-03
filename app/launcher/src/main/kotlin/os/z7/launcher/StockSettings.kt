@@ -16,6 +16,11 @@ object StockSettings {
 
     const val MAIN = "main"
     const val WIFI = "Settings://com.xgimi.settings.net/wifi"
+    const val BLUETOOTH = "Settings://com.xgimi.settings.bluetooth"
+    const val KEYSTONE = "Settings://com.xgimi.settings.picture/keyStone"
+    const val ZOOM = "Settings://com.xgimi.settings.picture/zoom"
+    const val BRIGHTNESS = "Settings://com.xgimi.settings.brightness/brightness_misckey"
+    const val PICTURE_MODE = "Settings://com.xgimi.settings.image/mode_misckey"
 
     /** false — сервис не нашёлся или не запустился. */
     fun open(context: Context, page: String): Boolean = try {

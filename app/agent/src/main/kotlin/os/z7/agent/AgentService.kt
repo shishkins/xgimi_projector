@@ -76,6 +76,7 @@ class AgentService : Service() {
             ensureRevivable()
             ensureP2pPermission()
             SystemLocale(this@AgentService, adb).ensureSupported()
+            ensureKeyService()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
@@ -120,6 +121,23 @@ class AgentService : Service() {
         if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) {
             Logf.w("p2p: granting $perm")
             adb.run("pm grant $packageName $perm")
+        }
+    }
+
+    /**
+     * Служба кнопок пульта лаунчера (долгое «меню» → наша быстрая панель).
+     * Службы специальных возможностей включаются только настройкой secure — её пишет shell.
+     */
+    private fun ensureKeyService() {
+        if (adb.run("pm path ${Config.LAUNCHER_PKG}").isNullOrBlank()) return
+        val current = adb.run("settings get secure enabled_accessibility_services")?.trim().orEmpty()
+        if (!current.contains(Config.KEY_SERVICE)) {
+            val list = if (current.isEmpty() || current == "null") Config.KEY_SERVICE else "$current:${Config.KEY_SERVICE}"
+            Logf.w("keys: enabling ${Config.KEY_SERVICE}")
+            adb.run("settings put secure enabled_accessibility_services $list")
+        }
+        if (adb.run("settings get secure accessibility_enabled")?.trim() != "1") {
+            adb.run("settings put secure accessibility_enabled 1")
         }
     }
 
