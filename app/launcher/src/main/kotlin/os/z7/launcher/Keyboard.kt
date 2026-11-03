@@ -25,14 +25,14 @@ class Keyboard(
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
-        addView(rows)
+        addView(rows, LayoutParams(WRAP, WRAP))
         val special = row()
         special.addView(key(context.getString(R.string.key_shift), WIDE) { shift = !shift; render() })
         special.addView(key(context.getString(R.string.key_symbols), WIDE) { symbols = !symbols; render() })
         special.addView(key(context.getString(R.string.key_space), SPACE) { onText(" ") })
         special.addView(key("⌫", WIDE) { onDelete() })
         special.addView(key(doneLabel, DONE) { onDone() }.apply { setTextColor(context.getColor(R.color.accent)) })
-        addView(special)
+        addView(special, LayoutParams(WRAP, WRAP))
         render()
     }
 
@@ -50,7 +50,7 @@ class Keyboard(
                 val label = if (shift && !symbols) ch.uppercaseChar().toString() else ch.toString()
                 r.addView(key(label, KEY) { onText(label) })
             }
-            rows.addView(r)
+            rows.addView(r, LayoutParams(WRAP, WRAP).apply { gravity = Gravity.CENTER_HORIZONTAL })
         }
         focusedIndex?.let { (row, col) ->
             ((rows.getChildAt(row) as? LinearLayout)?.let { it.getChildAt(minOf(col, it.childCount - 1)) })?.requestFocus()
@@ -84,6 +84,7 @@ class Keyboard(
     }
 
     private companion object {
+        const val WRAP = LayoutParams.WRAP_CONTENT
         const val KEY = 56
         const val WIDE = 96
         const val SPACE = 200

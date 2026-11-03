@@ -44,6 +44,7 @@
     <string name="hint_done">done</string>
     <string name="reset_keystone">Reset Keystone</string>
     <string name="keystone_reset_done">Keystone reset</string>
+    <string name="reset_keystone_title">Reset the keystone to a plain rectangle?</string>
 
     <!-- Wi-Fi -->
     <string name="wifi_off">Off</string>
@@ -64,6 +65,7 @@
     <string name="wifi_password_for">Password for %1$s</string>
     <string name="wifi_password_hint">Password</string>
     <string name="wifi_show_password">Show</string>
+    <string name="wifi_hide_password">Hide</string>
     <string name="wifi_password_short">The password is too short</string>
     <string name="wifi_connect">Connect</string>
     <string name="key_shift">Shift</string>

@@ -34,6 +34,7 @@ class QuickPanel(private val service: Context) {
     private val autoHide = Runnable { hide() }
 
     private var root: FrameLayout? = null
+    private var lp: WindowManager.LayoutParams? = null
     private var panel: View? = null
     private var scrim: View? = null
     private var closing = false
@@ -73,7 +74,7 @@ class QuickPanel(private val service: Context) {
             addView(panelView, FrameLayout.LayoutParams(width, MATCH, Gravity.START))
         }
 
-        val lp = WindowManager.LayoutParams(
+        val params = WindowManager.LayoutParams(
             MATCH, MATCH,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
@@ -86,7 +87,8 @@ class QuickPanel(private val service: Context) {
         panel = panelView
         scrim = scrimView
         closing = false
-        wm.addView(rootView, lp)
+        lp = params
+        wm.addView(rootView, params)
 
         // анимацию запускаем, когда окно уже разложено: иначе первые кадры теряются и выезд «рвётся»
         rootView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -108,6 +110,11 @@ class QuickPanel(private val service: Context) {
         if (closing) return
         closing = true
         main.removeCallbacks(autoHide)
+        // пока панель уезжает, клавиши уже идут приложению под ней
+        lp?.let {
+            it.flags = it.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            wm.updateViewLayout(rootView, it)
+        }
         val panelView = panel!!
         panelView.animate().translationX(-panelView.width.toFloat()).setDuration(CLOSE_MS)
             .setInterpolator(AccelerateInterpolator(1.5f)).withLayer()
@@ -123,6 +130,7 @@ class QuickPanel(private val service: Context) {
     private fun remove(view: View) {
         if (root !== view) return
         root = null
+        lp = null
         panel = null
         scrim = null
         closing = false
@@ -201,7 +209,7 @@ class QuickPanel(private val service: Context) {
         val settings = Ui.Tile(context, R.drawable.ic_settings, context.getString(R.string.settings))
         wifi.setOnClickListener { closeThen { start(WifiActivity::class.java) } }
         settings.setOnClickListener { closeThen { start(SettingsActivity::class.java) } }
-        column.addView(pair(context, wifi, settings, heightDp = SMALL_TILE_DP), block(context, 24))
+        column.addView(pair(context, wifi, settings), block(context, 24))
         return column
     }
 
@@ -246,7 +254,6 @@ class QuickPanel(private val service: Context) {
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         const val PANEL_WIDTH_DP = 440
         const val TILE_DP = 96
-        const val SMALL_TILE_DP = 88
         const val GAP_DP = 12
         const val OPEN_MS = 260L
         const val CLOSE_MS = 200L

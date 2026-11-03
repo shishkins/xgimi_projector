@@ -42,6 +42,7 @@
     <string name="hint_done">готово</string>
     <string name="reset_keystone">Сбросить трапецию</string>
     <string name="keystone_reset_done">Трапеция сброшена</string>
+    <string name="reset_keystone_title">Сбросить трапецию до прямоугольника?</string>
 
     <string name="wifi_off">Выкл.</string>
     <string name="wifi_not_connected">Не подключено</string>
@@ -61,6 +62,7 @@
     <string name="wifi_password_for">Пароль для %1$s</string>
     <string name="wifi_password_hint">Пароль</string>
     <string name="wifi_show_password">Показать</string>
+    <string name="wifi_hide_password">Скрыть</string>
     <string name="wifi_password_short">Слишком короткий пароль</string>
     <string name="wifi_connect">Подключить</string>
     <string name="key_shift">Shift</string>

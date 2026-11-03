@@ -97,7 +97,8 @@ class WifiActivity : Activity() {
         })
         main.post(rescan)
         render()
-        toggle.requestFocus()
+        // фокус на сетях, а не на выключателе: случайный OK не должен отключать Wi-Fi
+        if (currentFocus == null || currentFocus === toggle) (list.getChildAt(0)?.takeIf { it.isFocusable } ?: toggle).requestFocus()
     }
 
     override fun onPause() {
@@ -218,11 +219,10 @@ class WifiActivity : Activity() {
         val show = Ui.Row(this, null, getString(R.string.wifi_show_password))
         show.setOnClickListener {
             visible = !visible
-            show.setValue(getString(if (visible) R.string.on else R.string.off))
+            show.setLabel(getString(if (visible) R.string.wifi_hide_password else R.string.wifi_show_password))
             update()
         }
-        show.setValue(getString(R.string.off))
-        fieldRow.addView(show, LinearLayout.LayoutParams(WRAP, WRAP).apply { marginStart = Ui.dp(this@WifiActivity, 16) })
+        fieldRow.addView(show, LinearLayout.LayoutParams(Ui.dp(this, SHOW_DP), WRAP).apply { marginStart = Ui.dp(this@WifiActivity, 16) })
         column.addView(fieldRow, LinearLayout.LayoutParams(WRAP, WRAP).apply {
             topMargin = Ui.dp(this@WifiActivity, 20)
             bottomMargin = Ui.dp(this@WifiActivity, 20)
@@ -240,7 +240,7 @@ class WifiActivity : Activity() {
             },
             doneLabel = getString(R.string.wifi_connect),
         )
-        column.addView(keyboard)
+        column.addView(keyboard, LinearLayout.LayoutParams(WRAP, WRAP))
         update()
         sheet.show(column)
         keyboard.focusFirst()
@@ -267,7 +267,8 @@ class WifiActivity : Activity() {
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         const val SIDE_DP = 360
-        const val FIELD_WIDTH_DP = 420
+        const val FIELD_WIDTH_DP = 460
+        const val SHOW_DP = 180
         const val SCAN_EVERY_MS = 15_000L
         const val MIN_PASSWORD = 8
         const val MIN_WEP_KEY = 5

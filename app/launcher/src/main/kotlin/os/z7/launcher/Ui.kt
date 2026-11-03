@@ -66,7 +66,10 @@ object Ui {
 
     /** Строка списка: значок, подпись, значение справа. */
     class Row(context: Context, iconRes: Int?, label: String, value: String? = null) : LinearLayout(context) {
-        private val valueView = text(context, value ?: "", 16f, secondary = true)
+        private val labelView = text(context, label, 18f)
+        private val valueView = text(context, value ?: "", 16f, secondary = true).apply {
+            setPadding(dp(context, 16), 0, 0, 0)
+        }
 
         init {
             orientation = HORIZONTAL
@@ -78,10 +81,12 @@ object Ui {
                     (layoutParams as LayoutParams).marginEnd = dp(context, 16)
                 })
             }
-            addView(text(context, label, 18f), LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(labelView, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(valueView)
             focusable(this, ROW_FOCUS_SCALE)
         }
+
+        fun setLabel(label: String) { labelView.text = label }
 
         fun setValue(value: String) { valueView.text = value }
     }

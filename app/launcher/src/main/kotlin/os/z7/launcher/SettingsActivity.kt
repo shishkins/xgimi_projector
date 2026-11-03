@@ -61,7 +61,7 @@ class SettingsActivity : Activity() {
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(84), dp(12), dp(48))
+            setPadding(dp(24), dp(84), dp(24), dp(48))
         }
         contentScroll = ScrollView(this).apply {
             isVerticalScrollBarEnabled = false
@@ -116,7 +116,15 @@ class SettingsActivity : Activity() {
             if (!KeystoneScreen.show(this)) toast(R.string.keys_service_off)
         })
         c.addView(row(R.drawable.ic_reset, R.string.reset_keystone) {
-            Gmpf.run(this, { it.resetKeystone() }) { ok -> toast(if (ok != null) R.string.keystone_reset_done else R.string.action_failed) }
+            // сброс стирает настроенную форму — только после подтверждения, «Отмена» первой
+            sheet.confirm(getString(R.string.reset_keystone_title), null, listOf(
+                getString(R.string.cancel) to {},
+                getString(R.string.reset_keystone) to {
+                    Gmpf.run(this, { it.resetKeystone() }) { ok ->
+                        toast(if (ok != null) R.string.keystone_reset_done else R.string.action_failed)
+                    }
+                },
+            ))
         })
         c.addView(row(R.drawable.ic_focus, R.string.quick_auto_focus) { Projector.autoFocus(this) })
         c.addView(row(R.drawable.ic_focus_manual, R.string.quick_manual_focus) { Projector.manualFocus(this) })

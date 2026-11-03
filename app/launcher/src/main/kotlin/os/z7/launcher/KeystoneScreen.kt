@@ -49,17 +49,18 @@ object KeystoneScreen {
             override fun dispatchKeyEvent(event: KeyEvent) = onKey(event)
         }
 
+        private val lp = WindowManager.LayoutParams(
+            MATCH, MATCH,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply { windowAnimations = 0 }
+
         fun open() {
             view.addView(frame, FrameLayout.LayoutParams(MATCH, MATCH))
             view.addView(card(), FrameLayout.LayoutParams(WRAP, WRAP, Gravity.CENTER))
             view.isFocusable = true
             view.isFocusableInTouchMode = true
-            val lp = WindowManager.LayoutParams(
-                MATCH, MATCH,
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-                PixelFormat.TRANSLUCENT,
-            ).apply { windowAnimations = 0 }
             view.alpha = 0f
             wm.addView(view, lp)
             root = view
@@ -77,6 +78,9 @@ object KeystoneScreen {
         private fun close() {
             if (root !== view) return
             root = null
+            // пока окно гаснет, клавиши уже идут экрану под ним
+            lp.flags = lp.flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            wm.updateViewLayout(view, lp)
             view.animate().alpha(0f).setDuration(FADE_MS).withEndAction {
                 try { wm.removeView(view) } catch (_: Exception) {}
             }.start()
@@ -155,7 +159,7 @@ object KeystoneScreen {
                 cornerRadius = Ui.dp(context, 24).toFloat()
             }
             setPadding(Ui.dp(context, 40), Ui.dp(context, 28), Ui.dp(context, 40), Ui.dp(context, 28))
-            addView(Ui.text(context, context.getString(R.string.quick_keystone), 28f))
+            addView(Ui.text(context, context.getString(R.string.quick_keystone), 28f), LinearLayout.LayoutParams(WRAP, WRAP))
             addView(cornerLabel, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = Ui.dp(context, 6) })
             val hints = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
             for ((key, label) in HINTS) {
