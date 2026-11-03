@@ -185,7 +185,7 @@ class QuickPanel(private val service: Context) {
         brightness.set(Gmpf.BRIGHTNESS_MAX, notify = false)
 
         // размер изображения: вправо — больше; у прошивки наоборот (шаг 0 — полный размер)
-        var zoomMax = DEFAULT_ZOOM_MAX
+        var zoomMax = Gmpf.ZOOM_MAX_DEFAULT
         val zoomWriter = Gmpf.Latest<Int>(service) { b, v -> b.setZoom(v) }
         val size = Ui.Slider(context, R.drawable.ic_zoom, context.getString(R.string.quick_size), 0, zoomMax,
             format = { if (it == zoomMax) context.getString(R.string.size_full) else "−${zoomMax - it}" },
@@ -260,6 +260,5 @@ class QuickPanel(private val service: Context) {
         const val CLOSE_MS = 200L
         const val AUTO_HIDE_MS = 30_000L
         const val STOCK_RECHECK_MS = 700L
-        const val DEFAULT_ZOOM_MAX = 38
     }
 }

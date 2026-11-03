@@ -143,10 +143,17 @@ object Gmpf {
             return field(step.javaClass, "zoomDigtalstep").getInt(step)
         }
 
+        /**
+         * Сколько шагов уменьшения доступно. getAllZoomStep отвечает стабильно; getZoomStepRange
+         * (им пользуются настройки XGIMI) после трапеции иногда отдаёт нули — он только запасной.
+         */
         fun zoomMax(): Int {
+            val all = displayCls.getMethod("getAllZoomStep").invoke(display)
+            val max = all?.let { field(it.javaClass, "zoomOutMaxStep").getInt(it) } ?: 0
+            if (max > 0) return max
             val range = cls("com.xgimi.gmpf.rp.ZoomStepRange").getConstructor().newInstance()
             displayCls.getMethod("getZoomStepRange", range.javaClass).invoke(display, range)
-            return field(range.javaClass, "zoomOutDigtalMaxNum").getInt(range)
+            return field(range.javaClass, "zoomOutDigtalMaxNum").getInt(range).takeIf { it > 0 } ?: ZOOM_MAX_DEFAULT
         }
 
         fun setZoom(step: Int) {
@@ -170,6 +177,9 @@ object Gmpf {
     }
 
     const val BRIGHTNESS_MAX = 10
+
+    /** Шагов уменьшения на Z7X (getAllZoomStep.zoomOutMaxStep) — если прошивка не ответила. */
+    const val ZOOM_MAX_DEFAULT = 38
     const val PANEL_W = 1920
     const val PANEL_H = 1080
 

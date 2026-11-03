@@ -132,7 +132,7 @@ class SettingsActivity : Activity() {
         val brightness = Ui.Slider(this, R.drawable.ic_brightness, getString(R.string.quick_brightness), 1, Gmpf.BRIGHTNESS_MAX,
             format = { "$it / ${Gmpf.BRIGHTNESS_MAX}" }, write = brightnessWriter::submit)
         brightness.set(Gmpf.BRIGHTNESS_MAX, notify = false)
-        var zoomMax = DEFAULT_ZOOM_MAX
+        var zoomMax = Gmpf.ZOOM_MAX_DEFAULT
         val zoomWriter = Gmpf.Latest<Int>(this) { b, v -> b.setZoom(v) }
         val size = Ui.Slider(this, R.drawable.ic_zoom, getString(R.string.quick_size), 0, zoomMax,
             format = { if (it == zoomMax) getString(R.string.size_full) else "−${zoomMax - it}" },
@@ -240,7 +240,6 @@ class SettingsActivity : Activity() {
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         const val MENU_DP = 340
         const val SWITCH_MS = 160L
-        const val DEFAULT_ZOOM_MAX = 38
         const val KEY_SECTION = "section"
     }
 }
