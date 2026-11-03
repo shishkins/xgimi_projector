@@ -94,7 +94,7 @@ class AgentService : Service() {
                 val miracastActive = miracast.tick()
                 // Маяк уводит радио с канала домашней сети (пинг 3 → 130–260 мс),
                 // поэтому он работает, только пока на проекторе ничего не играет.
-                beacon.tick(enabled = !miracastActive && !audio.isMusicActive)
+                beacon.tick(enabled = Config.P2P_BEACON_ENABLED && !miracastActive && !audio.isMusicActive)
                 castKeeper.ensureCast(miracastActive)
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {
