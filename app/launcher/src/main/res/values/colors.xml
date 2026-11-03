@@ -19,4 +19,5 @@
     <color name="handle_idle">#99FFFFFF</color>
     <!-- цвет плашки калибровки XGIMI, которую мы накрываем -->
     <color name="ak_pill">#FF437AF5</color>
+    <color name="ak_toast">#FF2A2E3A</color>
 </resources>

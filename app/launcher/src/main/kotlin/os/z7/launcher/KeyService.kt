@@ -44,19 +44,31 @@ class KeyService : AccessibilityService() {
             }
             // HOME окну не доставляется — сами убираем панель, а клавишу пропускаем дальше
             KeyEvent.KEYCODE_HOME -> if (panel.isShown) main.post { panel.hide() }
+            // тост XGIMI «OK — ручная трапеция» открыл бы их китайский экран — открываем свой
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> if (cover.mode == AkCover.Mode.DONE) {
+                if (event.action == KeyEvent.ACTION_UP) main.post { KeystoneScreen.show(this) }
+                return true
+            }
         }
         return false
     }
 
-    /** Окно автотрапеции XGIMI появилось или исчезло — накрыть или убрать китайскую подпись. */
+    /**
+     * Экраны автотрапеции XGIMI: калибровочное окно (полноэкранный TVUIDialog) и тост об окончании
+     * (ToastDialog) — накрываем их китайские подписи своими. Окно калибровки в списке окон
+     * специальных возможностей не видно, поэтому ловим событие его появления.
+     */
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (!::cover.isInitialized) return
-        val akShown = try {
-            windows.any { it.title?.toString() == AK_WINDOW_TITLE }
-        } catch (e: Exception) {
-            false
+        if (event == null || !::cover.isInitialized) return
+        if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val fromSystemUi = event.packageName == XGIMI_SYSTEMUI
+        val cls = event.className?.toString()
+        when {
+            fromSystemUi && cls == AK_DIALOG_CLASS && event.isFullScreen -> cover.show(AkCover.Mode.RUNNING)
+            fromSystemUi && cls == AK_DONE_CLASS && cover.mode == AkCover.Mode.RUNNING -> cover.show(AkCover.Mode.DONE)
+            // пользователь ушёл в другое окно — калибровку прервали
+            !fromSystemUi && event.packageName != packageName && cover.mode == AkCover.Mode.RUNNING -> cover.hide()
         }
-        if (akShown) cover.show() else cover.hide()
     }
 
     override fun onInterrupt() {}
@@ -71,8 +83,10 @@ class KeyService : AccessibilityService() {
     companion object {
         private const val KEY_QUICK_MENU = KeyEvent.KEYCODE_MOVE_HOME
 
-        /** Заголовок окна калибровки XGIMI (com.xgimi.systemui AK2Window). */
-        private const val AK_WINDOW_TITLE = "trapezoidAdj"
+        /** Окна автотрапеции XGIMI: калибровка (AK2Window) и тост об окончании. */
+        private const val XGIMI_SYSTEMUI = "com.xgimi.systemui"
+        private const val AK_DIALOG_CLASS = "com.open.ui.widget.dialog.TVUIDialog"
+        private const val AK_DONE_CLASS = "com.xgimi.systemui.tip.ToastDialog"
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null
