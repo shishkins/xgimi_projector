@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Перевод строк com.android.newsettings (имена — как в оригинале). Пробная партия. -->
-<resources>
-    <string name="head_image_setting_text">Picture &amp; Display</string>
-    <string name="head_network_setting_text">Network</string>
-    <string name="head_picture_correction_text">Image Correction</string>
-</resources>
