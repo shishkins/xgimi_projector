@@ -75,7 +75,7 @@ class AgentService : Service() {
         loopJob = scope.launch {
             ensureRevivable()
             ensureP2pPermission()
-            SystemLocale(this@AgentService, adb).ensureNotChinese()
+            SystemLocale(this@AgentService, adb).ensureSupported()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()

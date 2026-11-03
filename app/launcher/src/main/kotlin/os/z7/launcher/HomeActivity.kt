@@ -45,9 +45,10 @@ class HomeActivity : Activity() {
         override fun onLost(network: Network) = showWifi(false)
     }
 
-    /** Язык интерфейса: русский, если он системный, иначе английский (системный тут китайский). */
     private val uiLocale: Locale
-        get() = if (resources.configuration.locales[0].language == "ru") Locale("ru") else Locale.ENGLISH
+        get() = UiLanguage.locale(this)
+
+    override fun attachBaseContext(newBase: Context) = super.attachBaseContext(UiLanguage.wrap(newBase))
 
     private val timeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) = updateDate()
@@ -66,9 +67,9 @@ class HomeActivity : Activity() {
         apps = findViewById(R.id.apps)
         date = findViewById(R.id.date)
         wifi = findViewById(R.id.status_wifi)
-        // до нашего модуля настроек оба значка открывают стоковые настройки XGIMI
-        wifi.setOnClickListener { launch(Intent().setComponent(STOCK_SETTINGS)) }
-        findViewById<View>(R.id.status_settings).setOnClickListener { launch(Intent().setComponent(STOCK_SETTINGS)) }
+        // до нашего модуля настроек значки открывают страницы стоковых настроек XGIMI
+        wifi.setOnClickListener { openStockSettings(StockSettings.WIFI) }
+        findViewById<View>(R.id.status_settings).setOnClickListener { openStockSettings(StockSettings.MAIN) }
         connectivity.registerDefaultNetworkCallback(networkCallback)
 
         registerReceiver(timeReceiver, IntentFilter().apply {
@@ -147,7 +148,7 @@ class HomeActivity : Activity() {
             }
         }
         list += Tiles.action(this, R.drawable.ic_settings, getString(R.string.settings)) {
-            launch(Intent().setComponent(STOCK_SETTINGS))
+            openStockSettings(StockSettings.MAIN)
         }
         return list
     }
@@ -162,6 +163,12 @@ class HomeActivity : Activity() {
         try {
             startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
+            Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun openStockSettings(page: String) {
+        if (!StockSettings.open(this, page)) {
             Toast.makeText(this, R.string.launch_failed, Toast.LENGTH_SHORT).show()
         }
     }
@@ -185,10 +192,5 @@ class HomeActivity : Activity() {
     companion object {
         private const val AIRPLAY_PKG = "io.github.jqssun.airplay"
         private const val CAST_FROM_WINDOWS = "os.z7.agent.CastFromWindowsActivity"
-
-        /** Стоковые настройки XGIMI — до появления нашего модуля настроек. */
-        private val STOCK_SETTINGS = ComponentName(
-            "com.android.newsettings", "com.xgimi.newsettings.mock.MockActivity",
-        )
     }
 }

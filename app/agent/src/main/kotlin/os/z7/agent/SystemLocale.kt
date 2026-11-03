@@ -10,17 +10,22 @@ import java.util.Locale
 
 /**
  * Язык системы. Прошивка XGIMI стоит на zh-CN (persist.sys.locale), из-за этого по-китайски
- * и системные диалоги (установщик пакетов и т.п.). Наша система — английская по умолчанию,
- * русский по выбору. Меняем язык так же, как «Настройки → Язык»: updatePersistentConfiguration
+ * и системные диалоги (установщик пакетов и т.п.), и меню XGIMI. Язык наших модулей задаётся
+ * отдельно от системного. Меняем язык так же, как «Настройки → Язык»: updatePersistentConfiguration
  * (сразу и после перезагрузки). Разрешение CHANGE_CONFIGURATION — development, выдаётся shell'ом.
  * Откат: restore.ps1 возвращает zh-CN.
  */
 class SystemLocale(private val context: Context, private val adb: AdbBridge) {
 
-    /** Китайский системный язык → английский. Выбранный пользователем язык не трогаем. */
-    fun ensureNotChinese() {
+    /**
+     * Китайский (и английский, см. ниже) системный язык → [Config.DEFAULT_LOCALE].
+     * Английский нельзя: настройки XGIMI при `en` возвращают систему на zh-CN и не открываются
+     * («English is no longer supported», SettingService.showWindow). Любой другой язык они пропускают,
+     * а свои тексты для него берут из базовых ресурсов — английских.
+     */
+    fun ensureSupported() {
         val current = Resources.getSystem().configuration.locales[0]
-        if (current.language != "zh") return
+        if (current.language != "zh" && current.language != "en") return
         Logf.w("locale: system is $current — switching to ${Config.DEFAULT_LOCALE}")
         set(Locale.forLanguageTag(Config.DEFAULT_LOCALE))
     }
