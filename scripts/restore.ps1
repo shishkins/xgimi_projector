@@ -82,6 +82,12 @@ Write-Host '=== 3e. Выключаю геолокацию, которую аге
 # агент добавляет поставщика network (AgentService.ensureWifiAccess); на заводской прошивке список пуст
 Sh 'settings put secure location_providers_allowed -network' | Out-Null
 
+Write-Host '=== 3f. Возвращаю заводское имя устройства (Miracast/Win+K) ==='
+# мы переименовали «我的Z7X» в «XGIMI Projector» в базе XGIMI и в имени Wi-Fi Direct
+Sh "content update --uri content://com.xgimi.appdbsettings/Settings --bind XgimiDeviceName:s:'我的Z7X'" | Out-Null
+Sh "settings put global wifi_p2p_device_name '我的Z7X'" | Out-Null
+Sh 'setprop persist.z7.p2p_beacon ""' | Out-Null
+
 if ($RemoveOurApps) {
     Write-Host '=== 4. Удаляю наши приложения os.z7.* ==='
     $ours = (Sh 'pm list packages os.z7') + (Sh 'pm list packages local.z7x')

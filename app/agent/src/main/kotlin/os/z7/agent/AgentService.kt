@@ -84,7 +84,7 @@ class AgentService : Service() {
                 val miracastActive = miracast.tick()
                 // Маяк уводит радио с канала домашней сети (пинг 3 → 130–260 мс),
                 // поэтому он работает, только пока на проекторе ничего не играет.
-                beacon.tick(enabled = Config.P2P_BEACON_ENABLED && !miracastActive && !audio.isMusicActive)
+                beacon.tick(enabled = beaconAllowed() && !miracastActive && !audio.isMusicActive && !airplayInUse())
                 castKeeper.ensureCast(miracastActive)
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {
@@ -170,6 +170,39 @@ class AgentService : Service() {
         adb.run("pm disable-user --user 0 ${Config.LEGACY_RECEIVER_PKG}")
     }
 
+    private var beaconProp: Boolean? = null
+    private var beaconPropAt = 0L
+
+    /**
+     * Маяк включается свойством `persist.z7.p2p_beacon` (1/0) — проверить на проекторе без
+     * пересборки; без свойства действует [Config.P2P_BEACON_ENABLED]. Читаем раз в минуту.
+     */
+    private fun beaconAllowed(): Boolean {
+        val now = SystemClock.elapsedRealtime()
+        if (beaconPropAt == 0L || now - beaconPropAt >= Config.BEACON_PROP_EVERY_MS) {
+            beaconPropAt = now
+            beaconProp = when (adb.run("getprop ${Config.BEACON_PROP}")?.trim()) {
+                "1", "true" -> true
+                "0", "false" -> false
+                else -> null
+            }
+        }
+        return beaconProp ?: Config.P2P_BEACON_ENABLED
+    }
+
+    /**
+     * К AirPlay кто-то подключён (установленное TCP-соединение на порт приёмника). В этот момент
+     * listen маяка мешал бы синхронизации часов с iPhone — маяк молчит, даже если звука нет.
+     */
+    private fun airplayInUse(): Boolean {
+        val port = "%04X".format(Config.RECEIVER_PORT)
+        val conns = adb.run("cat /proc/net/tcp /proc/net/tcp6").orEmpty()
+        return conns.lineSequence().any { line ->
+            val cols = line.trim().split(WHITESPACE)
+            cols.size > 3 && cols[1].endsWith(":$port") && cols[3] == TCP_ESTABLISHED
+        }
+    }
+
     private fun scheduleRevive() {
         val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pi = PendingIntent.getBroadcast(
@@ -220,6 +253,8 @@ class AgentService : Service() {
         private const val TAG = "z7.AgentService"
         private const val CHANNEL_ID = "z7_agent"
         private const val NOTIF_ID = 1001
+        private const val TCP_ESTABLISHED = "01"
+        private val WHITESPACE = Regex("""\s+""")
 
         fun start(context: Context) {
             val intent = Intent(context, AgentService::class.java)

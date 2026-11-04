@@ -13,6 +13,7 @@ object Config {
      */
     const val RECEIVER_PKG = "os.z7.airplay"
     const val RECEIVER_BOOT_RECEIVER = "io.github.jqssun.airplay.BootReceiver"
+    const val RECEIVER_PORT = 7000
 
     /** Прежний приёмник из официальных релизов: рядом с нашим он рекламирует то же имя — выключаем. */
     const val LEGACY_RECEIVER_PKG = "io.github.jqssun.airplay"
@@ -59,6 +60,10 @@ object Config {
      * (звук отстаёт до конца сессии). Включать только вместе с защитой AirPlay.
      */
     const val P2P_BEACON_ENABLED = false
+
+    /** Свойство-переключатель маяка для проверки на проекторе (см. AgentService.beaconAllowed). */
+    const val BEACON_PROP = "persist.z7.p2p_beacon"
+    const val BEACON_PROP_EVERY_MS = 60_000L
 
     /** Как часто перезапускать P2P-поиск (один поиск держит listen ~2 мин). */
     const val P2P_DISCOVER_EVERY_MS = 90_000L
