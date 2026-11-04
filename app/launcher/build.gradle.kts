@@ -15,8 +15,8 @@ android {
         applicationId = "os.z7.launcher"
         minSdk = 28
         targetSdk = 28
-        versionCode = 8
-        versionName = "0.3.3"
+        versionCode = 9
+        versionName = "0.3.4"
     }
 
     signingConfigs {

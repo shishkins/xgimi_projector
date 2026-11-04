@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   - останавливает стоковый каст-движок XGIMI (конкурент в mDNS),
-  - запускает открытый AirPlay-приёмник io.github.jqssun.airplay,
+  - запускает AirPlay-приёмник os.z7.airplay (наша сборка jqssun/android-airplay-server),
   - проверяет, что он слушает порт 7000.
 
   Для Miracast (Windows Win+K) используй -Miracast: переводит проектор в режим
@@ -43,7 +43,7 @@ Write-Host 'Останавливаю стоковый каст...'
 Sh 'am force-stop com.xgimi.wirelessscreen' | Out-Null
 Sh 'am force-stop com.hpplay.happyplay.aw' | Out-Null
 Write-Host 'Запускаю AirPlay-приёмник...'
-Sh 'monkey -p io.github.jqssun.airplay -c android.intent.category.LAUNCHER 1' | Out-Null
+Sh 'monkey -p os.z7.airplay -c android.intent.category.LAUNCHER 1' | Out-Null
 Start-Sleep 5
 $tcp = Sh 'cat /proc/net/tcp /proc/net/tcp6'
 $open = $tcp | ForEach-Object { $f = ($_.Trim() -split '\s+'); if ($f.Count -gt 3 -and $f[3] -eq '0A') { [Convert]::ToInt32(($f[1] -split ':')[1], 16) } }

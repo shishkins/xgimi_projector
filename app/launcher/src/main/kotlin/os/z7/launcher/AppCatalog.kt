@@ -38,6 +38,7 @@ object AppCatalog {
     private val HIDDEN = setOf(
         "os.z7.agent",
         "os.z7.launcher",
+        "os.z7.airplay",
         "io.github.jqssun.airplay",
         "local.z7x.adb",
         "com.android.newsettings",

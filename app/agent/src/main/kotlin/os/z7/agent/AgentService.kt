@@ -78,6 +78,7 @@ class AgentService : Service() {
             SystemLocale(this@AgentService, adb).ensureSupported()
             ensureKeyService()
             ensureWifiAccess()
+            retireLegacyReceiver()
             var lastBeat = 0L
             while (isActive) {
                 val miracastActive = miracast.tick()
@@ -155,6 +156,18 @@ class AgentService : Service() {
             Logf.w("wifi: allowing location provider '${Config.LOCATION_PROVIDER}' for scan results")
             adb.run("settings put secure location_providers_allowed +${Config.LOCATION_PROVIDER}")
         }
+    }
+
+    /**
+     * Наш приёмник (os.z7.airplay) пришёл на смену официальной сборке. Две копии рекламировали бы
+     * одно имя и делили порт 7000, поэтому старую выключаем (обратимо, restore.ps1 включает).
+     */
+    private fun retireLegacyReceiver() {
+        if (adb.run("pm path ${Config.RECEIVER_PKG}").isNullOrBlank()) return
+        if (adb.run("pm list packages -e ${Config.LEGACY_RECEIVER_PKG}").isNullOrBlank()) return
+        Logf.w("cast: ${Config.RECEIVER_PKG} installed — disabling ${Config.LEGACY_RECEIVER_PKG}")
+        adb.run("am force-stop ${Config.LEGACY_RECEIVER_PKG}")
+        adb.run("pm disable-user --user 0 ${Config.LEGACY_RECEIVER_PKG}")
     }
 
     private fun scheduleRevive() {

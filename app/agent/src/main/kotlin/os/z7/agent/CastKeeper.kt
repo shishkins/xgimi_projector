@@ -40,7 +40,7 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
         try {
             context.sendBroadcast(
                 Intent(Config.RECEIVER_START_ACTION)
-                    .setClassName(Config.RECEIVER_PKG, "${Config.RECEIVER_PKG}.BootReceiver")
+                    .setClassName(Config.RECEIVER_PKG, Config.RECEIVER_BOOT_RECEIVER)
                     .addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES)
                     // фоновая очередь после загрузки/установки забита рассылками на десятки секунд
                     .addFlags(Intent.FLAG_RECEIVER_FOREGROUND)

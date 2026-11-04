@@ -6,8 +6,16 @@ object Config {
     const val ADB_HOST = "127.0.0.1"
     const val ADB_PORT = 5555
 
-    /** Открытый AirPlay-приёмник (UxPlay). См. docs/cast-setup.md. */
-    const val RECEIVER_PKG = "io.github.jqssun.airplay"
+    /**
+     * AirPlay-приёмник — наша сборка открытого jqssun/android-airplay-server (UxPlay) с синхронизацией
+     * видео по часам звука: github.com/shishkins/android-airplay-server, ветка z7. Код приложения
+     * остался в пакете io.github.jqssun.airplay, поэтому имена классов — с ним.
+     */
+    const val RECEIVER_PKG = "os.z7.airplay"
+    const val RECEIVER_BOOT_RECEIVER = "io.github.jqssun.airplay.BootReceiver"
+
+    /** Прежний приёмник из официальных релизов: рядом с нашим он рекламирует то же имя — выключаем. */
+    const val LEGACY_RECEIVER_PKG = "io.github.jqssun.airplay"
 
     /** Наш главный экран и его служба кнопок пульта (быстрая панель по долгому «меню»). */
     const val LAUNCHER_PKG = "os.z7.launcher"

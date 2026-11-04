@@ -191,7 +191,7 @@ class HomeActivity : Activity() {
     }
 
     companion object {
-        private const val AIRPLAY_PKG = "io.github.jqssun.airplay"
+        private const val AIRPLAY_PKG = "os.z7.airplay"
         private const val CAST_FROM_WINDOWS = "os.z7.agent.CastFromWindowsActivity"
     }
 }
