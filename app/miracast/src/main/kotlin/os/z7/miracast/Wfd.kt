@@ -26,13 +26,22 @@ internal object Wfd {
      * Маска CEA 0x1FFFF: все режимы 640×480 … 1080p24, включая 1080p60 и 1080p30.
      * Профили: 02 = Constrained High, 01 = Constrained Baseline; уровень 0x10 = 4.2 (нужен для 1080p60).
      */
-    private const val NATIVE = "40"
-    private const val CEA = "0001FFFF"
     private const val VESA = "00000000"
     private const val HH = "00000000"
-    val VIDEO_FORMATS =
-        "$NATIVE 00 02 10 $CEA $VESA $HH 00 0000 0000 00 none none, " +
-            "01 10 $CEA $VESA $HH 00 0000 0000 00 none none"
+
+    /**
+     * `persist.z7.mc.max_fps` = 30 — объявить родным 1080p30 (CEA 7, уровень 4.1) без 1080p60/50:
+     * вдвое меньше работы декодеру, если на 60 к/с он не успевает.
+     */
+    val VIDEO_FORMATS: String
+        get() {
+            val fps30 = Tuning.maxFps <= 30
+            val native = if (fps30) "38" else "40"
+            val cea = if (fps30) "0001DEFF" else "0001FFFF"
+            val level = if (fps30) "08" else "10"
+            return "$native 00 02 $level $cea $VESA $HH 00 0000 0000 00 none none, " +
+                "01 $level $cea $VESA $HH 00 0000 0000 00 none none"
+        }
 
     /** Только AAC 48 кГц стерео: LPCM в WFD-обёртке не нужен, Windows шлёт AAC. */
     const val AUDIO_CODECS = "AAC 00000001 00"

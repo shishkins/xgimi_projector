@@ -61,6 +61,7 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
         super.onStart()
         L.i("activity: start, waiting for a source")
         showWaiting(getString(R.string.status_waiting))
+        registerReceiver(wifiWatch, android.content.IntentFilter(android.net.wifi.WifiManager.NETWORK_STATE_CHANGED_ACTION))
         p2p.start()
     }
 
@@ -68,7 +69,18 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
         L.i("activity: stop")
         stopSession("activity stopped")
         p2p.stop()
+        try { unregisterReceiver(wifiWatch) } catch (_: Exception) {}
         super.onStop()
+    }
+
+    /** Домашняя Wi-Fi во время сеанса: делит радио с группой — следим, не отваливается ли. */
+    private val wifiWatch = object : android.content.BroadcastReceiver() {
+        private var last: String? = null
+        override fun onReceive(c: Context, i: android.content.Intent) {
+            val ni = i.getParcelableExtra<android.net.NetworkInfo>(android.net.wifi.WifiManager.EXTRA_NETWORK_INFO)
+            val state = "${ni?.detailedState}"
+            if (state != last) { last = state; L.i("wifi: home network $state") }
+        }
     }
 
     // --- P2P ---

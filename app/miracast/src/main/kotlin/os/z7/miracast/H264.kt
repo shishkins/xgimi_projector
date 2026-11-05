@@ -95,6 +95,8 @@ internal object H264 {
 internal object Tuning {
     /** Целевая задержка звука в AudioTrack: видео декодируется дольше и должно успевать к звуку. */
     val audioDelayMs: Long get() = prop("persist.z7.mc.audio_delay_ms", 80)
+    /** Предел частоты кадров, который объявляем источнику: 60 или 30. */
+    val maxFps: Long get() = prop("persist.z7.mc.max_fps", 60)
     /** Размер буфера AudioTrack (не меньше системного минимума). */
     val audioBufferMs: Long get() = prop("persist.z7.mc.audio_buffer_ms", 60)
     /** Задержка показа, пока звука нет. */

@@ -445,7 +445,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
     private companion object {
         val SAMPLE_RATES = intArrayOf(96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350)
         /** Больше кадров в очереди — декодер явно не успевает. */
-        const val MAX_PENDING = 30
+        const val MAX_PENDING = 60
         const val IDR_RETRY_MS = 500L
         /** Дальше этого кадр не откладываем, даже если звук «впереди». */
         const val MAX_LEAD_NS = 150_000_000L

@@ -12,12 +12,23 @@ class CastFromWindowsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AgentService.start(this)
+        val app = applicationContext
         if (OwnMiracast.installed(this)) {
-            OwnMiracast.open(this)
+            // свой приёмник; сначала — атрибуты WFD, если их сбросила перезагрузка
+            Thread {
+                val adb = AdbBridge(app.filesDir)
+                try {
+                    OwnMiracast.ensureWfd(adb)
+                } catch (e: Exception) {
+                    Logf.w("miracast: WFD priming failed: ${e.message}")
+                } finally {
+                    adb.close()
+                }
+                OwnMiracast.open(app)
+            }.start()
             finish()
             return
         }
-        val app = applicationContext
         Thread {
             val adb = AdbBridge(app.filesDir)
             try {
