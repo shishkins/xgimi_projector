@@ -54,6 +54,8 @@ class AgentService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.data?.schemeSpecificPart != Config.LAUNCHER_PKG) return
             scope.launch {
+                // сразу после обновления система ещё разбирает пакет — переподключение не цепляется
+                delay(Config.KEYS_REBIND_AFTER_UPDATE_MS)
                 Logf.w("keys: launcher updated — rebinding ${Config.KEY_SERVICE}")
                 val current = adb.run("settings get secure enabled_accessibility_services")?.trim().orEmpty()
                 val without = current.split(':').filter { it.isNotEmpty() && it != "null" && it != Config.KEY_SERVICE }

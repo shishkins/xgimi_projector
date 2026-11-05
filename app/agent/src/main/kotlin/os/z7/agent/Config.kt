@@ -127,6 +127,9 @@ object Config {
     /** Пауза между «убрать» и «вернуть» службу кнопок при переподключении. */
     const val KEYS_REBIND_PAUSE_MS = 2_000L
 
+    /** Сколько ждать после обновления лаунчера, прежде чем переподключать службу кнопок. */
+    const val KEYS_REBIND_AFTER_UPDATE_MS = 10_000L
+
     /** Стоковые настройки XGIMI: в них быстрое меню, которое всплывает под нашей панелью. */
     const val STOCK_SETTINGS_PKG = "com.android.newsettings"
 
