@@ -55,6 +55,10 @@ class AgentService : Service() {
                     if (miracast.onIncoming()) {
                         delay(Config.MIRACAST_RECEIVER_READY_MS) // приёмник открылся и отключил домашнюю сеть
                         beacon.dropGroup()
+                    } else {
+                        // приёмник подготовил сеанс сам — ничего; иначе группа при домашней сети, снять безопасно
+                        delay(Config.ORPHAN_GROUP_GRACE_MS)
+                        OwnMiracast.guardOrphan(this@AgentService, adb)
                     }
                 }
             }
@@ -73,13 +77,16 @@ class AgentService : Service() {
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         registerReceiver(p2pReceiver, IntentFilter(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION))
         loopJob = scope.launch {
+            // кнопки пульта — первыми: без службы долгое «меню» открывает китайское меню
+            ensureKeyService()
+            logWifiState()
             ensureRevivable()
             ensureP2pPermission()
             SystemLocale(this@AgentService, adb).ensureSupported()
-            ensureKeyService()
             ensureWifiAccess()
             retireLegacyReceiver()
             var lastBeat = 0L
+            var lastKeysCheck = SystemClock.elapsedRealtime()
             while (isActive) {
                 val miracastActive = miracast.tick()
                 // Маяк уводит радио с канала домашней сети (пинг 3 → 130–260 мс),
@@ -88,6 +95,11 @@ class AgentService : Service() {
                 castKeeper.ensureCast(miracastActive)
                 OwnMiracast.tick(this@AgentService, adb)
                 val now = SystemClock.elapsedRealtime()
+                // прошивка после загрузки переписывает список служб спецвозможностей — возвращаем свою
+                if (now - lastKeysCheck >= Config.KEYS_CHECK_MS) {
+                    ensureKeyService()
+                    lastKeysCheck = now
+                }
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {
                     Logf.w("heartbeat: cast=${castKeeper.lastState} miracast=$miracastActive")
                     lastBeat = now
@@ -137,6 +149,14 @@ class AgentService : Service() {
      * Служба кнопок пульта лаунчера (долгое «меню» → наша быстрая панель).
      * Службы специальных возможностей включаются только настройкой secure — её пишет shell.
      */
+    /** Состояние Wi-Fi при старте — чтобы при зависании чипа MT7961 было видно, на чём. */
+    private fun logWifiState() {
+        val state = adb.run("dumpsys wifi | grep -E '^Wi-Fi is|mNetworkInfo' | head -2").orEmpty().trim()
+        val link = adb.run("ip -o link show wlan0").orEmpty().trim().take(120)
+        val oneLine = state.lines().joinToString(" | ")
+        Logf.w("wifi at start: $oneLine | wlan0: ${link.ifEmpty { "absent" }}")
+    }
+
     private fun ensureKeyService() {
         if (adb.run("pm path ${Config.LAUNCHER_PKG}").isNullOrBlank()) return
         val current = adb.run("settings get secure enabled_accessibility_services")?.trim().orEmpty()

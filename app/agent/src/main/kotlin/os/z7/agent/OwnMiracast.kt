@@ -4,6 +4,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.wifi.p2p.WifiP2pManager
+import android.os.Looper
 
 /**
  * Наш приёмник Miracast (os.z7.miracast): подготовка Wi-Fi и сеанс.
@@ -18,6 +20,11 @@ import android.content.pm.PackageManager
  *    молча перестаёт работать и не включается даже после перезагрузки — только после
  *    отключения питания. Без домашней сети этого не бывает, а картинка ровнее (нет сканирований).
  * 3. Приёмник закрылся — агент возвращает сеть (сторож [tick], с запасом на падения).
+ * 4. Правило: группа Wi-Fi Direct НИКОГДА не разрывается при включённой домашней сети.
+ *    Поэтому в конце сеанса сначала дожидаемся, пока группы не станет, и только потом
+ *    включаем сеть; а группу, поднятую вне сеанса (Windows переподключилась к закрытому
+ *    приёмнику, прошивка сама принимает приглашения), снимаем при выключенной сети ([guardOrphan]).
+ *    2026-11-05 такая «самовольная» группа в 18:03 предшествовала мёртвому Wi-Fi после ребута.
  */
 object OwnMiracast {
     private const val PREFS = "own_miracast"
@@ -73,10 +80,53 @@ object OwnMiracast {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (!prefs.getBoolean(KEY_ACTIVE, false)) return
         Logf.w("miracast: session over ($why) — restoring home Wi-Fi")
+        dropGroupAndWait(context, adb)
         adb.run("service call wifi ${Config.WIFI_TX_ENABLE_CONNECTIVITY_MANAGER} i32 1")
         enableSavedNetworks(adb)
         prefs.edit().putBoolean(KEY_ACTIVE, false).apply()
         closedTicks = 0
+    }
+
+    /**
+     * Группа Wi-Fi Direct появилась вне нашего сеанса (и не во время подготовки) — домашняя
+     * сеть при этом включена. Ставим сеть на паузу, снимаем группу, ждём, возвращаем сеть.
+     */
+    @Synchronized
+    fun guardOrphan(context: Context, adb: AdbBridge) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_ACTIVE, false) || priming) return
+        Logf.w("p2p: group formed outside our session — pausing home Wi-Fi before dropping it")
+        quietWifi(adb)
+        dropGroupAndWait(context, adb)
+        adb.run("service call wifi ${Config.WIFI_TX_ENABLE_CONNECTIVITY_MANAGER} i32 1")
+        enableSavedNetworks(adb)
+    }
+
+    /** Снять P2P-группу и дождаться, пока её не станет (до ~10 с). Вызывать при выключенной сети. */
+    private fun dropGroupAndWait(context: Context, adb: AdbBridge) {
+        if (!groupPresent(adb)) return
+        try {
+            val mgr = context.getSystemService(WifiP2pManager::class.java)
+            val ch = mgr.initialize(context, Looper.getMainLooper(), null)
+            mgr.removeGroup(ch, null)
+        } catch (e: Exception) {
+            Logf.w("p2p: removeGroup failed: ${e.message}")
+        }
+        for (i in 0 until GROUP_WAIT_STEPS) {
+            Thread.sleep(500)
+            if (!groupPresent(adb)) {
+                Thread.sleep(GROUP_SETTLE_MS) // драйверу — время довести разрыв до конца
+                Logf.w("p2p: group gone")
+                return
+            }
+        }
+        Logf.w("p2p: group still present after waiting")
+    }
+
+    /** В dumpsys: «mGroup null» — группы нет; «mGroup network: …» — есть. */
+    private fun groupPresent(adb: AdbBridge): Boolean {
+        val line = adb.run("dumpsys wifip2p | grep '^mGroup '").orEmpty()
+        return line.contains("mGroup") && !line.contains("mGroup null")
     }
 
     /** Приёмник сообщает, что закрылся, — сеть возвращаем сразу, не дожидаясь сторожа. */
@@ -140,4 +190,6 @@ object OwnMiracast {
 
     private val SAVED_ID = Regex("ID: (\\d+) SSID")
     private const val PRIME_EXIT_MS = 3_000L
+    private const val GROUP_WAIT_STEPS = 20
+    private const val GROUP_SETTLE_MS = 1_000L
 }

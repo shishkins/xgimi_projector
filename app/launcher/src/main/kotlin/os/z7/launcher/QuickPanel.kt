@@ -318,7 +318,8 @@ class QuickPanel(private val service: Context) {
     private fun closeStockMenu() {
         val send = { service.sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS).putExtra("reason", service.packageName)) }
         send()
-        main.postDelayed({ if (isShown) send() }, STOCK_RECHECK_MS)
+        // под нагрузкой меню XGIMI открывается позже нашего — закрываем его ещё несколько раз
+        for (delay in STOCK_RECHECK_MS) main.postDelayed({ if (isShown) send() }, delay)
     }
 
     private fun dp(context: Context, v: Int) = Ui.dp(context, v)
@@ -331,6 +332,6 @@ class QuickPanel(private val service: Context) {
         const val OPEN_MS = 280L
         const val CLOSE_MS = 200L
         const val AUTO_HIDE_MS = 30_000L
-        const val STOCK_RECHECK_MS = 700L
+        val STOCK_RECHECK_MS = longArrayOf(300L, 700L, 1_200L, 2_000L)
     }
 }
