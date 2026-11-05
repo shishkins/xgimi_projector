@@ -187,10 +187,6 @@ class AgentService : Service() {
     }
 
     /**
-     * Наш приёмник (os.z7.airplay) пришёл на смену официальной сборке. Две копии рекламировали бы
-     * одно имя и делили порт 7000, поэтому старую выключаем (обратимо, restore.ps1 включает).
-     */
-    /**
      * Быстрое меню XGIMI (долгое «меню» на пульте) прошивка открывает раньше службы кнопок
      * лаунчера, и его видно под нашей панелью. Отключить только его службу shell не может
      * ("Shell cannot change component state"), поэтому выключаем стоковые настройки целиком —
@@ -204,6 +200,10 @@ class AgentService : Service() {
         adb.run("pm disable-user --user 0 ${Config.STOCK_SETTINGS_PKG}")
     }
 
+    /**
+     * Наш приёмник (os.z7.airplay) пришёл на смену официальной сборке. Две копии рекламировали бы
+     * одно имя и делили порт 7000, поэтому старую выключаем (обратимо, restore.ps1 включает).
+     */
     private fun retireLegacyReceiver() {
         if (adb.run("pm path ${Config.RECEIVER_PKG}").isNullOrBlank()) return
         if (adb.run("pm list packages -e ${Config.LEGACY_RECEIVER_PKG}").isNullOrBlank()) return
