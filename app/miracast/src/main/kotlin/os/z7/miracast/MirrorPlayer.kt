@@ -122,7 +122,8 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         fun renderAt(ptsUs: Long): Long {
             val now = System.nanoTime()
             if (audioPtsUs != Long.MIN_VALUE && now - audioAtNs < 500_000_000L) {
-                return audioAtNs + (ptsUs - audioPtsUs) * 1000
+                // кадр, отложенный надолго, держит буфер декодера — и тот встаёт
+                return minOf(audioAtNs + (ptsUs - audioPtsUs) * 1000, now + MAX_LEAD_NS)
             }
             val at = if (basePts == Long.MIN_VALUE) Long.MIN_VALUE else baseNs + (ptsUs - basePts) * 1000
             if (at == Long.MIN_VALUE || at < now - 200_000_000L || at > now + 1_000_000_000L) {
@@ -174,8 +175,24 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         /** Потерян пакет: текущие кадры могут быть битыми — ждём ключевой. */
         fun corrupted() {
             handler.post {
-                if (!waitKey) { waitKey = true; L.w("video: packet loss, waiting for a key frame") }
+                if (!waitKey) L.w("video: packet loss, waiting for a key frame")
+                awaitKey()
+            }
+        }
+
+        /** Ждать ключевой кадр, напоминая источнику, пока не придёт (Windows отвечает не на каждый запрос). */
+        private fun awaitKey() {
+            waitKey = true
+            handler.removeCallbacks(idrReminder)
+            listener.onNeedIdr()
+            handler.postDelayed(idrReminder, IDR_RETRY_MS)
+        }
+
+        private val idrReminder = object : Runnable {
+            override fun run() {
+                if (!waitKey || !running) return
                 listener.onNeedIdr()
+                handler.postDelayed(this, IDR_RETRY_MS)
             }
         }
 
@@ -189,6 +206,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             if (waitKey) {
                 if (!H264.isKeyFrame(au)) return
                 waitKey = false
+                handler.removeCallbacks(idrReminder)
                 pending.clear()
             }
             if (codec == null && !open(au)) return
@@ -196,8 +214,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
                 // декодер не успевает: старые кадры уже не нужны, начинаем со свежего ключевого
                 L.w("video: decoder behind by ${pending.size} frames, skipping to a key frame")
                 pending.clear()
-                waitKey = true
-                listener.onNeedIdr()
+                awaitKey()
                 return
             }
             pending.add(au to ptsUs)
@@ -272,9 +289,10 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
     }
 
     /**
-     * AAC (ADTS в PES) → PCM → AudioTrack. Задержка звука держится около [Tuning.audioDelayMs]:
-     * если в AudioTrack накопилось больше — лишнее срезается (звук догоняет), если меньше —
-     * просто играет. Часы видео: какой PTS сейчас звучит (по AudioTrack.getTimestamp).
+     * AAC (ADTS в PES) → PCM → AudioTrack. AudioTrack на этом проекторе начинает играть только
+     * с полным буфером, поэтому PCM пишется всегда (блокирующая запись сама держит темп), а
+     * задержка ограничивается на входе: пакет, отставший от самого свежего больше чем на
+     * [Tuning.audioDelayMs], выбрасывается. Часы видео: какой PTS сейчас звучит (getTimestamp).
      */
     private inner class AudioPlayer {
         private val queue = LinkedBlockingQueue<Pair<ByteArray, Long>>(200)
@@ -293,7 +311,10 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
 
         fun report(): String = if (track == null) "off" else "buffer $pendingMs ms, trimmed ${trimmed.also { trimmed = 0 }} ms"
 
+        @Volatile private var newestPts = Long.MIN_VALUE
+
         fun offer(pes: ByteArray, ptsUs: Long) {
+            newestPts = ptsUs
             if (!queue.offer(pes to ptsUs)) { queue.clear(); L.w("audio: queue overflow, dropped") }
         }
 
@@ -316,7 +337,11 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             try {
                 while (running) {
                     val item = queue.poll(5, TimeUnit.MILLISECONDS)
-                    if (item != null) feed(item.first, item.second, info)
+                    if (item != null) {
+                        val behindMs = (newestPts - item.second) / 1000
+                        if (track != null && behindMs > Tuning.audioDelayMs) trimmed += 21 // ~1 кадр AAC
+                        else feed(item.first, item.second, info)
+                    }
                     drain(info)
                     updateClock()
                 }
@@ -366,8 +391,8 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             codec = c
             val chMask = if (channels == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
             val min = AudioTrack.getMinBufferSize(rate, chMask, AudioFormat.ENCODING_PCM_16BIT)
-            // буфер с запасом под целевую задержку; задержку держим сами, срезая лишнее
-            val want = (rate * channels * 2 * (Tuning.audioDelayMs + 60) / 1000).toInt()
+            // буфер не больше нужного: он же — задержка звука (играет только полный)
+            val want = (rate * channels * 2 * Tuning.audioBufferMs / 1000).toInt()
             val t = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -390,20 +415,14 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
                 if (idx < 0) return
                 val frames = info.size / (2 * channels)
                 if (frames > 0) {
-                    val queued = framesWritten - t.playbackHeadPosition.toLong()
-                    val queuedMs = queued * 1000 / rate
-                    pendingMs = queuedMs
-                    if (queuedMs > Tuning.audioDelayMs + 40) {
-                        trimmed += frames * 1000L / rate // звук отстал — этот кусок пропускаем
-                    } else {
-                        val b = c.getOutputBuffer(idx)!!
-                        val chunk = ByteArray(info.size)
-                        b.position(info.offset)
-                        b.get(chunk)
-                        t.write(chunk, 0, chunk.size)
-                        framesWritten += frames
-                        endPts = info.presentationTimeUs + frames * 1_000_000L / rate
-                    }
+                    val b = c.getOutputBuffer(idx)!!
+                    val chunk = ByteArray(info.size)
+                    b.position(info.offset)
+                    b.get(chunk)
+                    t.write(chunk, 0, chunk.size)
+                    framesWritten += frames
+                    endPts = info.presentationTimeUs + frames * 1_000_000L / rate
+                    pendingMs = (framesWritten - t.playbackHeadPosition.toLong()) * 1000 / rate
                 }
                 c.releaseOutputBuffer(idx, false)
             }
@@ -427,5 +446,8 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         val SAMPLE_RATES = intArrayOf(96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350)
         /** Больше кадров в очереди — декодер явно не успевает. */
         const val MAX_PENDING = 30
+        const val IDR_RETRY_MS = 500L
+        /** Дальше этого кадр не откладываем, даже если звук «впереди». */
+        const val MAX_LEAD_NS = 150_000_000L
     }
 }

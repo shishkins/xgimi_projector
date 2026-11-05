@@ -123,7 +123,7 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
 
     override fun onNeedIdr() {
         val now = SystemClock.elapsedRealtime()
-        if (now - lastIdr < 1000) return
+        if (now - lastIdr < 400) return
         lastIdr = now
         rtsp?.requestIdr()
     }
