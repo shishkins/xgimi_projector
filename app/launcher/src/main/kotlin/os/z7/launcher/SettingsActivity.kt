@@ -136,85 +136,21 @@ class SettingsActivity : Activity() {
         c.addView(row(R.drawable.ic_wifi, R.string.wifi, Wifi.status(this)) { open(WifiActivity::class.java) })
     }
 
-    /** Режим и параметры картинки — на текущем источнике (у HDMI свои). */
+    /** Режим и параметры картинки — на текущем источнике (у HDMI свои). Общий блок с панелью поверх видео. */
     private fun picture(c: LinearLayout) {
-        lateinit var reload: () -> Unit
-        lateinit var applyMode: (Int?) -> Unit
-        val mode = Ui.Choice(this, R.drawable.ic_picture, getString(R.string.picture_mode), options(Hw.PICTURE_MODES)) { m ->
-            applyMode(m)
-            // у каждого режима свои значения — после смены перечитываем
-            Gmpf.run(this, { Hw.setPictureMode(it, m) }) { reload() }
-        }
-        c.addView(mode, spaced())
-        val customHint = Ui.text(this, getString(R.string.picture_custom_only), 15f, secondary = true).apply {
-            setPadding(dp(20), 0, dp(20), dp(8))
-        }
-        c.addView(customHint, LinearLayout.LayoutParams(MATCH, WRAP))
-
-        val lampWriter = Gmpf.Latest<Int>(this) { b, v -> b.setBrightness(v) }
-        val lamp = Ui.Slider(this, R.drawable.ic_brightness, getString(R.string.quick_brightness), 1, Gmpf.BRIGHTNESS_MAX,
-            format = { "$it / ${Gmpf.BRIGHTNESS_MAX}" }, write = lampWriter::submit)
-        lamp.set(Gmpf.BRIGHTNESS_MAX, notify = false)
-        c.addView(lamp, spaced())
-
-        fun item(labelRes: Int, name: String): Ui.Slider {
-            val writer = Gmpf.Latest<Int>(this) { b, v -> Hw.setPictureItem(b, name, v) }
-            return Ui.Slider(this, R.drawable.ic_picture, getString(labelRes), 0, 100,
-                format = { "$it" }, write = writer::submit, step = 2).also { c.addView(it, spaced()) }
-        }
-        val brightness = item(R.string.picture_brightness, "Brightness")
-        val contrast = item(R.string.picture_contrast, "Contrast")
-        val saturation = item(R.string.picture_saturation, "Saturation")
-        val sharpness = item(R.string.picture_sharpness, "Sharpness")
-
-        val colorTemp = Ui.Choice(this, R.drawable.ic_brightness, getString(R.string.color_temperature), options(Hw.COLOR_TEMPS)) { v ->
-            Gmpf.run(this, { Hw.setPictureItem(it, "ColorTemperature", v) })
-        }
-        val motion = Ui.Choice(this, R.drawable.ic_picture, getString(R.string.motion_smoothing), options(Hw.LEVELS)) { v ->
-            Gmpf.run(this, { Hw.setPictureItem(it, "MemcLevel", v) })
-        }
-        val noise = Ui.Choice(this, R.drawable.ic_picture, getString(R.string.noise_reduction), options(Hw.LEVELS)) { v ->
-            Gmpf.run(this, { Hw.setPictureItem(it, "3DNR", v) })
-        }
-        c.addView(colorTemp, spaced())
-        c.addView(motion, spaced())
-        c.addView(noise, spaced())
-
-        // ручные пункты работают только в режиме «Свой» — в остальных гасим их
-        val manual = listOf<View>(brightness, contrast, saturation, sharpness, colorTemp, motion, noise)
-        applyMode = { m ->
-            val custom = m == Hw.MODE_CUSTOM
-            manual.forEach { Ui.setActive(it, custom) }
-            customHint.visibility = if (custom || m == null) View.GONE else View.VISIBLE
-        }
-        applyMode(null)
+        val controls = PictureControls(this, c, ::spaced) { toast(R.string.hardware_unavailable) }
         c.addView(row(R.drawable.ic_reset, R.string.picture_reset) {
             sheet.confirm(getString(R.string.picture_reset_title), null, listOf(
                 getString(R.string.cancel) to {},
-                getString(R.string.picture_reset) to { Gmpf.run(this, { Hw.resetPicture(it) }) { reload() } },
+                getString(R.string.picture_reset) to { Gmpf.run(this, { Hw.resetPicture(it) }) { controls.reload() } },
             ))
         })
-
-        reload = {
-            Gmpf.run(this, { b -> Hw.picture(b) to b.brightness() }) { values ->
-                if (values == null) {
-                    toast(R.string.hardware_unavailable)
-                    return@run
-                }
-                val p = values.first
-                mode.show(p.mode)
-                applyMode(p.mode)
-                lamp.set(values.second, notify = false)
-                brightness.set(p.brightness, notify = false)
-                contrast.set(p.contrast, notify = false)
-                saturation.set(p.saturation, notify = false)
-                sharpness.set(p.sharpness, notify = false)
-                colorTemp.show(p.colorTemp)
-                motion.show(p.motion)
-                noise.show(p.noise)
-            }
-        }
-        reload()
+        // здесь картинку не видно — подсказываем, где менять её вживую
+        c.addView(Ui.text(this, getString(R.string.picture_live_hint), 15f, secondary = true).apply {
+            maxLines = 2
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }, LinearLayout.LayoutParams(MATCH, WRAP))
+        controls.reload()
     }
 
     private fun projection(c: LinearLayout) {

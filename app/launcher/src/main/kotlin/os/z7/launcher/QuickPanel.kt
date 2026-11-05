@@ -138,6 +138,7 @@ class QuickPanel(private val service: Context) {
 
     /** Убрать окно сразу, без анимации (служба выключается). */
     fun dismiss() {
+        picture.dismiss()
         root?.let { remove(it) }
     }
 
@@ -223,16 +224,31 @@ class QuickPanel(private val service: Context) {
         // сеть и настройки
         val wifi = Ui.Tile(context, R.drawable.ic_wifi, context.getString(R.string.wifi), Wifi.status(context))
         val settings = Ui.Tile(context, R.drawable.ic_settings, context.getString(R.string.settings))
+        val pictureTile = Ui.Tile(context, R.drawable.ic_picture, context.getString(R.string.section_picture))
+        pictureTile.setOnClickListener { closeThen { picture.show() } }
         wifi.setOnClickListener { closeThen { start(WifiActivity::class.java) } }
         settings.setOnClickListener { closeThen { start(SettingsActivity::class.java) } }
-        solid(context, wifi, settings, volume, brightness, size)
-        column.addView(pair(context, wifi, settings), block(context, 24))
+        solid(context, pictureTile, wifi, settings, volume, brightness, size)
+        column.addView(row(context, pictureTile, wifi, settings), block(context, 24))
         return column
     }
 
     /** Плитки и ползунки панели — непрозрачные (панель лежит на прозрачном градиенте поверх видео). */
     private fun solid(context: Context, vararg views: View) =
         views.forEach { it.background = context.getDrawable(R.drawable.card_solid_bg) }
+
+    /** Ряд плиток равной ширины. */
+    private fun row(context: Context, vararg tiles: View) = LinearLayout(context).apply {
+        orientation = LinearLayout.HORIZONTAL
+        tiles.forEachIndexed { i, t ->
+            addView(t, LinearLayout.LayoutParams(0, Ui.dp(context, TILE_DP), 1f).apply {
+                if (i > 0) marginStart = Ui.dp(context, GAP_DP)
+            })
+        }
+    }
+
+    /** Настройки картинки поверх видео — изменения видно сразу. */
+    private val picture by lazy { PictureOverlay(service) }
 
     private fun pair(context: Context, a: View, b: View, heightDp: Int = TILE_DP) = LinearLayout(context).apply {
         orientation = LinearLayout.HORIZONTAL
