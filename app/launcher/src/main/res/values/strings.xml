@@ -169,4 +169,10 @@
     <string name="focus_on_start">Auto focus at start-up</string>
     <string name="boot_sound">Start-up sound</string>
     <string name="quick_hint">OK on a slider — adjust with ◀ ▶</string>
+    <string name="hdmi_game_mode">Game mode (low latency)</string>
+    <string name="game_auto">Auto — when the console asks</string>
+    <string name="game_always">Always</string>
+    <string name="game_off">Off</string>
+    <string name="hdmi_game_on">Game mode — low latency</string>
+    <string name="hdmi_game_off">Game mode off</string>
 </resources>

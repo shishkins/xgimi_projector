@@ -135,6 +135,20 @@ object Hw {
     fun switchToHdmi(b: Gmpf.Bridge, port: Int) = b.call(TV, "switchInputSource", port)
     fun switchToAndroid(b: Gmpf.Bridge) = b.call(TV, "switchInputSource", 0)
 
+    /** Просит ли устройство на HDMI-порту низкую задержку (ALLM: PS5/Xbox в игре). */
+    fun allm(b: Gmpf.Bridge, port: Int) = b.bool(TV, "getAllmStatus", port)
+
+    /**
+     * Игровой режим входа HDMI — «максимальная скорость» стока (низкая задержка). Работает только
+     * вариант «для источника»: setGameModeOptionForSource(3, порт) читается обратно как 3, а общий
+     * setGameModeOption на Z7X не держится (проверено 2026-11-05). 3 — без 120 Гц, 0 — стандарт.
+     */
+    fun setGameMode(b: Gmpf.Bridge, port: Int, on: Boolean) =
+        b.call(TV, "setGameModeOptionForSource", if (on) GAME_FAST else GAME_STANDARD, port)
+
+    private const val GAME_FAST = 3
+    private const val GAME_STANDARD = 0
+
     fun bootSound(b: Gmpf.Bridge) = b.bool(SYSTEM, "isPowerOnMusicEnabled")
     fun setBootSound(b: Gmpf.Bridge, on: Boolean) = b.call(SYSTEM, "enablePowerOnMusic", on)
 }

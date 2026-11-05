@@ -43,6 +43,8 @@ class HdmiActivity : Activity() {
     private var hasVideo = false
     private var retries = 0
     private var started = false
+    private var port = 1
+    private var gameOn = false
     private var focusRequest: AudioFocusRequest? = null
 
     private val retune = Runnable {
@@ -56,9 +58,12 @@ class HdmiActivity : Activity() {
     /** Опрос сигнала раз в секунду, как делает стоковый плеер. */
     private val pollSignal = object : Runnable {
         override fun run() {
-            Gmpf.run(this@HdmiActivity, { Hw.hdmiConnected(it) }) { signal ->
+            Gmpf.run(this@HdmiActivity, { Hw.hdmiConnected(it) to Hw.allm(it, port) }) { state ->
                 if (!started) return@run
-                if (signal != null) onSignal(signal)
+                if (state != null) {
+                    onSignal(state.first)
+                    applyGameMode(allm = state.first && state.second)
+                }
                 main.postDelayed(this, SIGNAL_POLL_MS)
             }
         }
@@ -128,6 +133,23 @@ class HdmiActivity : Activity() {
         main.postDelayed(pollSignal, delay + SIGNAL_POLL_MS)
     }
 
+    /**
+     * Игровой режим, как у стокового плеера (тот ловил событие ALLM и включал «максимальную
+     * скорость»): «авто» — пока приставка просит низкую задержку, «всегда», «выкл».
+     */
+    private fun applyGameMode(allm: Boolean) {
+        val want = when (gameMode(this)) {
+            GAME_ALWAYS -> hasVideo
+            GAME_OFF -> false
+            else -> allm
+        }
+        if (want == gameOn) return
+        gameOn = want
+        val p = port
+        Gmpf.run(this, { Hw.setGameMode(it, p, want) })
+        showInfo(getString(if (want) R.string.hdmi_game_on else R.string.hdmi_game_off))
+    }
+
     private fun onSignal(signal: Boolean) {
         if (signal == hasVideo) return
         hasVideo = signal
@@ -142,6 +164,11 @@ class HdmiActivity : Activity() {
         isVisible = false
         started = false
         main.removeCallbacksAndMessages(null)
+        if (gameOn) {
+            val p = port
+            Gmpf.run(this, { Hw.setGameMode(it, p, false) })
+            gameOn = false
+        }
         tv.reset()
         Gmpf.run(this, { Hw.switchToAndroid(it) })
         hasVideo = false
@@ -164,12 +191,13 @@ class HdmiActivity : Activity() {
         val id = inputId ?: return
         tv.tune(id, TvContract.buildChannelUriForPassthroughInput(id))
         // сам tune видеотракт не переключает — так же, как сток, переключаем источник на порт
-        val port = when {
+        port = when {
             id.contains("Hdmi2", ignoreCase = true) -> 2
             id.contains("Hdmi3", ignoreCase = true) -> 3
             else -> 1
         }
-        Gmpf.run(this, { Hw.switchToHdmi(it, port) })
+        val p = port
+        Gmpf.run(this, { Hw.switchToHdmi(it, p) })
         scheduleRetune()
     }
 
@@ -179,8 +207,9 @@ class HdmiActivity : Activity() {
     }
 
     /** Плашка «HDMI · 1920×1080 · 60 Hz» на несколько секунд после появления картинки. */
-    private fun showInfo() {
+    private fun showInfo(extra: String? = null) {
         val parts = mutableListOf("HDMI")
+        extra?.let { parts += it }
         try {
             val selected = tv.getSelectedTrack(TvTrackInfo.TYPE_VIDEO)
             tv.getTracks(TvTrackInfo.TYPE_VIDEO)?.firstOrNull { it.id == selected }?.let { t ->
@@ -220,6 +249,18 @@ class HdmiActivity : Activity() {
         fun setAutoSwitch(context: Context, on: Boolean) =
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO, on).apply()
 
+        /** Игровой режим: авто (по ALLM), всегда, выкл. */
+        const val GAME_AUTO = 0
+        const val GAME_ALWAYS = 1
+        const val GAME_OFF = 2
+
+        fun gameMode(context: Context) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getInt(KEY_GAME, GAME_AUTO)
+
+        fun setGameMode(context: Context, mode: Int) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putInt(KEY_GAME, mode).apply()
+
+        private const val KEY_GAME = "game_mode"
         private const val PREFS = "hdmi"
         private const val KEY_AUTO = "auto_switch"
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT

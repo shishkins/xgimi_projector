@@ -275,6 +275,13 @@ class SettingsActivity : Activity() {
             getString(R.string.hdmi_auto_switch_hint)) { on -> HdmiActivity.setAutoSwitch(this, on) }
         val cec = Ui.Toggle(this, R.drawable.ic_hdmi, getString(R.string.hdmi_cec),
             getString(R.string.hdmi_cec_hint)) { on -> Gmpf.run(this, { Hw.setCecWake(it, on) }) }
+        val game = Ui.Choice(this, R.drawable.ic_hdmi, getString(R.string.hdmi_game_mode), listOf(
+            HdmiActivity.GAME_AUTO to getString(R.string.game_auto),
+            HdmiActivity.GAME_ALWAYS to getString(R.string.game_always),
+            HdmiActivity.GAME_OFF to getString(R.string.game_off),
+        )) { v -> HdmiActivity.setGameMode(this, v) }
+        game.show(HdmiActivity.gameMode(this))
+        c.addView(game, spaced())
         listOf(autoSwitch, cec).forEach {
             it.set(null)
             c.addView(it, spaced())

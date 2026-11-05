@@ -20,6 +20,7 @@
     <color name="panel_line">#1AFFFFFF</color>
     <color name="card_idle">#14FFFFFF</color>
     <color name="card_focused">#FFF4F6FA</color>
+    <color name="card_solid">#FF2C323E</color>
     <color name="scrim">#8C000000</color>
     <color name="hero_scrim_start">#F2030510</color>
     <color name="hero_scrim_end">#00030510</color>

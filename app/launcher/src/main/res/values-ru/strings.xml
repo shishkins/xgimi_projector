@@ -167,4 +167,10 @@
     <string name="focus_on_start">Автофокус при включении</string>
     <string name="boot_sound">Звук при включении</string>
     <string name="quick_hint">OK на ползунке — менять стрелками ◀ ▶</string>
+    <string name="hdmi_game_mode">Игровой режим (низкая задержка)</string>
+    <string name="game_auto">Авто — по запросу приставки</string>
+    <string name="game_always">Всегда</string>
+    <string name="game_off">Выкл.</string>
+    <string name="hdmi_game_on">Игровой режим — низкая задержка</string>
+    <string name="hdmi_game_off">Игровой режим выключен</string>
 </resources>
