@@ -108,7 +108,7 @@ class AgentService : Service() {
             SystemLocale(this@AgentService, adb).ensureSupported()
             ensureWifiAccess()
             retireLegacyReceiver()
-            ensureStockMenuOff()
+            ensureStockSettingsOn()
             var lastBeat = 0L
             var lastKeysCheck = SystemClock.elapsedRealtime()
             while (isActive) {
@@ -210,17 +210,15 @@ class AgentService : Service() {
     }
 
     /**
-     * Быстрое меню XGIMI (долгое «меню» на пульте) прошивка открывает раньше службы кнопок
-     * лаунчера, и его видно под нашей панелью. Отключить только его службу shell не может
-     * ("Shell cannot change component state"), поэтому выключаем стоковые настройки целиком —
-     * их экраны мы и так не открываем. Лаунчер берёт из их APK классы gmpf и у выключенного.
-     * Откат: restore.ps1 (pm enable).
+     * Стоковые настройки XGIMI (com.android.newsettings) выключать НЕЛЬЗЯ: в них FallbackHome —
+     * единственный домашний экран с directBootAware. Без него при загрузке пользователь остаётся
+     * в BOOTING, sys.boot_completed не наступает, экран чёрный (2026-11-06, agent 0.3.14–0.3.16
+     * выключал их ради быстрого меню). Поэтому, наоборот, включаем, если кто-то выключил.
      */
-    private fun ensureStockMenuOff() {
-        if (adb.run("pm path ${Config.LAUNCHER_PKG}").isNullOrBlank()) return
-        if (adb.run("pm list packages -e ${Config.STOCK_SETTINGS_PKG}").isNullOrBlank()) return
-        Logf.w("keys: disabling ${Config.STOCK_SETTINGS_PKG} (stock quick menu)")
-        adb.run("pm disable-user --user 0 ${Config.STOCK_SETTINGS_PKG}")
+    private fun ensureStockSettingsOn() {
+        if (adb.run("pm list packages -d ${Config.STOCK_SETTINGS_PKG}").isNullOrBlank()) return
+        Logf.w("boot: ${Config.STOCK_SETTINGS_PKG} was disabled — enabling (FallbackHome is needed to boot)")
+        adb.run("pm enable ${Config.STOCK_SETTINGS_PKG}")
     }
 
     /**
