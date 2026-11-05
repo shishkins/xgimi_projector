@@ -42,7 +42,11 @@ class KeyService : AccessibilityService() {
         if (!::panel.isInitialized) return false
         when (event.keyCode) {
             KEY_QUICK_MENU -> {
-                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) main.post { panel.toggle() }
+                // XGIMI открывает своё меню на ОТПУСКАНИИ, а пульт шлёт «нажата» и «отпущена» почти
+                // одновременно. Если строить панель по «нажата», ответ на «отпущена» ждёт постройку
+                // в главном потоке дольше 500 мс — и клавиша уходит прошивке. Поэтому отвечаем на обе
+                // половины сразу, а панель строим после «отпущена».
+                if (event.action == KeyEvent.ACTION_UP) main.post { panel.toggle() }
                 return true
             }
             // HOME окну не доставляется — сами убираем панель, а клавишу пропускаем дальше
