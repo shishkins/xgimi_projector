@@ -25,12 +25,14 @@ class KeyService : AccessibilityService() {
     private val main = Handler(Looper.getMainLooper())
     private lateinit var panel: QuickPanel
     private lateinit var cover: AkCover
+    private lateinit var miracast: MiracastCover
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         panel = QuickPanel(this)
         cover = AkCover(this)
+        miracast = MiracastCover(this)
         // классы gmpf грузятся из APK настроек ~1 с — заранее, а не при первом открытии
         Gmpf.warmUp(this)
     }
@@ -63,11 +65,28 @@ class KeyService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val fromSystemUi = event.packageName == XGIMI_SYSTEMUI
         val cls = event.className?.toString()
+        onMiracastWindow(event, cls)
         when {
             fromSystemUi && cls == AK_DIALOG_CLASS && event.isFullScreen -> cover.show(AkCover.Mode.RUNNING)
             fromSystemUi && cls == AK_DONE_CLASS && cover.mode == AkCover.Mode.RUNNING -> cover.show(AkCover.Mode.DONE)
             // пользователь ушёл в другое окно — калибровку прервали
             !fromSystemUi && event.packageName != packageName && cover.mode == AkCover.Mode.RUNNING -> cover.hide()
+        }
+    }
+
+    /**
+     * Стоковый экран ожидания Miracast закрываем своим [MiracastCover]; картинку с Windows
+     * (MirCastActivity) и любое другое полноэкранное окно — открываем. Диалоги и тосты стока
+     * и чужие всплывашки (громкость) экран не снимают.
+     */
+    private fun onMiracastWindow(event: AccessibilityEvent, cls: String?) {
+        val pkg = event.packageName?.toString()
+        when {
+            pkg == STOCK_CAST_PKG && cls == WFD_WAIT_CLASS -> miracast.show()
+            pkg == STOCK_CAST_PKG && cls == WFD_MIRROR_CLASS -> miracast.hide()
+            // свои окна-накладки (панель, этот экран) пропускаем, а наш главный экран — нет
+            miracast.isShown && pkg != STOCK_CAST_PKG && event.isFullScreen &&
+                (pkg != packageName || cls?.endsWith("Activity") == true) -> miracast.hide()
         }
     }
 
@@ -77,6 +96,7 @@ class KeyService : AccessibilityService() {
         if (instance === this) instance = null
         if (::panel.isInitialized) panel.dismiss()
         if (::cover.isInitialized) cover.hide()
+        if (::miracast.isInitialized) miracast.hide()
         super.onDestroy()
     }
 
@@ -87,6 +107,11 @@ class KeyService : AccessibilityService() {
         private const val XGIMI_SYSTEMUI = "com.xgimi.systemui"
         private const val AK_DIALOG_CLASS = "com.open.ui.widget.dialog.TVUIDialog"
         private const val AK_DONE_CLASS = "com.xgimi.systemui.tip.ToastDialog"
+
+        /** Стоковый Miracast: экран ожидания и окно с картинкой Windows. */
+        private const val STOCK_CAST_PKG = "com.xgimi.wirelessscreen"
+        private const val WFD_WAIT_CLASS = "com.xgimi.wfd.WifiDisplayActivity"
+        private const val WFD_MIRROR_CLASS = "com.xgimi.wfd.mirror.MirCastActivity"
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null

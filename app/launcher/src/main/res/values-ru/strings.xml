@@ -89,4 +89,7 @@
     <string name="factory_reset_confirm">Да, сбросить проектор</string>
     <string name="factory_reset_started">Сброс — проектор перезагрузится</string>
     <string name="factory_reset_unavailable">Служба сброса не отвечает</string>
+    <string name="miracast_step_press">На компьютере нажмите</string>
+    <string name="miracast_step_choose">и выберите</string>
+    <string name="miracast_footer">На время трансляции домашняя Wi‑Fi отключается  ·  Назад — выход</string>
 </resources>
