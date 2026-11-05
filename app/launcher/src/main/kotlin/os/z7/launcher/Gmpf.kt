@@ -1,6 +1,7 @@
 package os.z7.launcher
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
@@ -68,10 +69,27 @@ object Gmpf {
     /** Заранее загрузить классы — первое открытие экрана не ждёт загрузки APK. */
     fun warmUp(context: Context) = run(context, { }) {}
 
+    /**
+     * APK стоковых настроек. Само приложение агент выключает (pm disable-user: в нём живёт
+     * быстрое меню XGIMI, которое прошивка открывает раньше нашей службы), поэтому ищем и среди
+     * выключенных, а на крайний случай — по известному пути прошивки.
+     */
+    private fun settingsApk(context: Context): String {
+        try {
+            val flags = PackageManager.MATCH_DISABLED_COMPONENTS or PackageManager.MATCH_DISABLED_UNTIL_USED_COMPONENTS
+            return context.packageManager.getApplicationInfo(SETTINGS_PKG, flags).sourceDir
+        } catch (_: PackageManager.NameNotFoundException) {
+        }
+        if (java.io.File(SETTINGS_APK).exists()) return SETTINGS_APK
+        throw IllegalStateException("$SETTINGS_PKG not found")
+    }
+
+    private const val SETTINGS_APK = "/system/priv-app/release_838_newsettings/release_838_newsettings.apk"
+
     private fun bridge(context: Context): Bridge? {
         if (bridge == null && !unavailable) {
             bridge = try {
-                val apk = context.packageManager.getApplicationInfo(SETTINGS_PKG, 0).sourceDir
+                val apk = settingsApk(context)
                 // родитель — системный загрузчик фреймворка: kotlin и прочие зависимости
                 // классы XGIMI берут из своего APK, а не из нашего
                 val loader = dalvik.system.PathClassLoader(apk, "/system/lib", Context::class.java.classLoader)

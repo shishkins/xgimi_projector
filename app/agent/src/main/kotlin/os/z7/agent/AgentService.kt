@@ -85,6 +85,7 @@ class AgentService : Service() {
             SystemLocale(this@AgentService, adb).ensureSupported()
             ensureWifiAccess()
             retireLegacyReceiver()
+            ensureStockMenuOff()
             var lastBeat = 0L
             var lastKeysCheck = SystemClock.elapsedRealtime()
             while (isActive) {
@@ -189,6 +190,20 @@ class AgentService : Service() {
      * Наш приёмник (os.z7.airplay) пришёл на смену официальной сборке. Две копии рекламировали бы
      * одно имя и делили порт 7000, поэтому старую выключаем (обратимо, restore.ps1 включает).
      */
+    /**
+     * Быстрое меню XGIMI (долгое «меню» на пульте) прошивка открывает раньше службы кнопок
+     * лаунчера, и его видно под нашей панелью. Отключить только его службу shell не может
+     * ("Shell cannot change component state"), поэтому выключаем стоковые настройки целиком —
+     * их экраны мы и так не открываем. Лаунчер берёт из их APK классы gmpf и у выключенного.
+     * Откат: restore.ps1 (pm enable).
+     */
+    private fun ensureStockMenuOff() {
+        if (adb.run("pm path ${Config.LAUNCHER_PKG}").isNullOrBlank()) return
+        if (adb.run("pm list packages -e ${Config.STOCK_SETTINGS_PKG}").isNullOrBlank()) return
+        Logf.w("keys: disabling ${Config.STOCK_SETTINGS_PKG} (stock quick menu)")
+        adb.run("pm disable-user --user 0 ${Config.STOCK_SETTINGS_PKG}")
+    }
+
     private fun retireLegacyReceiver() {
         if (adb.run("pm path ${Config.RECEIVER_PKG}").isNullOrBlank()) return
         if (adb.run("pm list packages -e ${Config.LEGACY_RECEIVER_PKG}").isNullOrBlank()) return
