@@ -12,6 +12,11 @@ class CastFromWindowsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         AgentService.start(this)
+        if (OwnMiracast.installed(this)) {
+            OwnMiracast.open(this)
+            finish()
+            return
+        }
         val app = applicationContext
         Thread {
             val adb = AdbBridge(app.filesDir)

@@ -25,6 +25,8 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
 
     val isRequested: Boolean get() = prefs.getLong(KEY_REQUESTED_AT, 0L) > 0L
 
+    private val ownReceiver = OwnMiracast.installed(context)
+
     /** Включить режим вручную: вызывает кнопка «Cast from Windows». */
     @Synchronized
     fun start() {
@@ -44,6 +46,7 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
     @Synchronized
     fun onIncoming(): Boolean {
         if (isRequested) return false
+        if (ownReceiver) return false // Win+K принимает наш приёмник сам
         Logf.w("miracast: incoming Win+K connection — opening receiver")
         begin(connected = false)
         return true

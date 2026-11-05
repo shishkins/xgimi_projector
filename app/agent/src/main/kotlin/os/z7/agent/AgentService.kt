@@ -124,6 +124,12 @@ class AgentService : Service() {
             Logf.w("p2p: granting $perm")
             adb.run("pm grant $packageName $perm")
         }
+        // свой приёмник Miracast: Wi-Fi Direct на Android 9 работает только с геолокацией
+        if (OwnMiracast.installed(this) &&
+            packageManager.checkPermission(perm, Config.OWN_MIRACAST_PKG) != PackageManager.PERMISSION_GRANTED) {
+            Logf.w("p2p: granting $perm to ${Config.OWN_MIRACAST_PKG}")
+            adb.run("pm grant ${Config.OWN_MIRACAST_PKG} $perm")
+        }
     }
 
     /**

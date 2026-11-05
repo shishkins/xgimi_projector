@@ -39,6 +39,13 @@ object Config {
     const val STOCK_CAST_PKG = "com.xgimi.wirelessscreen"
     const val STOCK_AIRPLAY_PORT = 7100
 
+    /**
+     * Свой приёмник Miracast (app/miracast). Если установлен, кнопка «Cast from Windows» открывает
+     * его, а входящее Win+K стоку не передаётся. Стоковый пакет нужен только для атрибутов WFD.
+     */
+    const val OWN_MIRACAST_PKG = "os.z7.miracast"
+    const val OWN_MIRACAST_ACTIVITY = "os.z7.miracast.MiracastActivity"
+
     /** Интент стокового Miracast-приёмника (WifiDisplayActivity). */
     const val MIRACAST_ACTION = "com.xgimi.NEWMIRACAST"
 

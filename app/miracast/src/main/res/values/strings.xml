@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cast from Windows</string>
+    <string name="title">Cast from Windows</string>
+    <string name="step_press">On your computer press</string>
+    <string name="step_choose">and choose</string>
+    <string name="footer">Back — exit</string>
+    <string name="status_waiting">Waiting for a computer…</string>
+    <string name="status_connecting">Connecting to %1$s…</string>
+    <string name="status_negotiating">Starting the picture…</string>
+    <string name="status_failed">Connection lost. Try Win + K again.</string>
+</resources>
