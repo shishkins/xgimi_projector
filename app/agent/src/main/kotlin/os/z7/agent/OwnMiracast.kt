@@ -27,8 +27,23 @@ object OwnMiracast {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
+    /** Идёт подготовка: сторож агента не должен выключать сток, повторное нажатие — ждёт. */
+    @Volatile var priming = false
+        private set
+
     /** Поставить атрибуты WFD, если их нет. Блокирует поток на время подготовки (до ~10 с). */
     fun ensureWfd(adb: AdbBridge) {
+        synchronized(this) {
+            priming = true
+            try {
+                prime(adb)
+            } finally {
+                priming = false
+            }
+        }
+    }
+
+    private fun prime(adb: AdbBridge) {
         if (wfdReady(adb)) return
         Logf.w("miracast: no WFD info in P2P service — priming via stock receiver")
         adb.run("pm enable ${Config.STOCK_CAST_PKG}")

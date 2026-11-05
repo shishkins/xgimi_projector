@@ -69,10 +69,13 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
     /** Шаг watchdog. [miracastActive] — идёт ли сейчас режим «Трансляция с Windows». */
     fun ensureCast(miracastActive: Boolean) {
         try {
-            if (!miracastActive && stockCastEnabled()) {
+            // во время подготовки своего приёмника сток включён намеренно (ставит атрибуты WFD)
+            if (!miracastActive && !OwnMiracast.priming && stockCastEnabled()) {
                 Logf.w("ensureCast: stock cast enabled outside Miracast — disabling")
                 adb.run("am force-stop ${Config.STOCK_CAST_PKG}")
                 adb.run("pm disable-user --user 0 ${Config.STOCK_CAST_PKG}")
+                // после force-stop сток не возвращает выключенные им сети — возвращаем сами
+                OwnMiracast.enableSavedNetworks(adb)
             }
             if (receiverRunning()) {
                 if (lastState != "ok") Logf.w("ensureCast: ok (receiver up)")
