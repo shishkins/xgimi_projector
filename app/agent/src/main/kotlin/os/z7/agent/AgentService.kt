@@ -86,6 +86,7 @@ class AgentService : Service() {
                 // поэтому он работает, только пока на проекторе ничего не играет.
                 beacon.tick(enabled = beaconAllowed() && !miracastActive && !audio.isMusicActive && !airplayInUse())
                 castKeeper.ensureCast(miracastActive)
+                OwnMiracast.tick(this@AgentService, adb)
                 val now = SystemClock.elapsedRealtime()
                 if (now - lastBeat >= Config.HEARTBEAT_MS) {
                     Logf.w("heartbeat: cast=${castKeeper.lastState} miracast=$miracastActive")

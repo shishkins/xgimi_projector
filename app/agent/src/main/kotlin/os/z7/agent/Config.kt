@@ -70,6 +70,9 @@ object Config {
     /** Номера вызовов IWifiManager на Android 9 этой прошивки (framework.jar, IWifiManager.Stub). */
     const val WIFI_TX_ENABLE_NETWORK = 17
     const val WIFI_TX_RECONNECT = 22
+    const val WIFI_TX_DISABLE_NETWORK = 18
+    /** enableWifiConnectivityManager(boolean): автоподключение и фоновые сканирования. */
+    const val WIFI_TX_ENABLE_CONNECTIVITY_MANAGER = 56
 
     /** Сколько дать стоковому приёмнику на запуск, прежде чем сбросить первую P2P-группу. */
     const val MIRACAST_RECEIVER_READY_MS = 3_000L

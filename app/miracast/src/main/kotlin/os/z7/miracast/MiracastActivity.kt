@@ -40,6 +40,18 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
     private var player: MirrorPlayer? = null
     private var lastIdr = 0L
 
+    /**
+     * Язык — как в нашем лаунчере (он передаёт его через агента), а не системный: системный
+     * агент держит английским. Запоминаем, чтобы и следующий запуск был на нём же.
+     */
+    override fun attachBaseContext(base: Context) {
+        val code = base.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LANGUAGE, null)
+        if (code == null) { super.attachBaseContext(base); return }
+        val config = android.content.res.Configuration(base.resources.configuration)
+        config.setLocale(java.util.Locale(code))
+        super.attachBaseContext(base.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -55,6 +67,22 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
         root.addView(waiting, FrameLayout.LayoutParams(MATCH, MATCH))
         setContentView(root)
         p2p = P2pLink(this, this)
+        applyLanguage(intent)
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        applyLanguage(intent)
+    }
+
+    /** Язык из запуска отличается от запомненного — запомнить и пересоздать экран. */
+    private fun applyLanguage(intent: android.content.Intent?): Boolean {
+        val code = intent?.getStringExtra(EXTRA_UI_LANGUAGE) ?: return false
+        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_LANGUAGE, null) == code) return false
+        prefs.edit().putString(KEY_LANGUAGE, code).commit()
+        recreate()
+        return true
     }
 
     override fun onStart() {
@@ -276,6 +304,9 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
     }
 
     private companion object {
+        const val PREFS = "ui"
+        const val KEY_LANGUAGE = "language"
+        const val EXTRA_UI_LANGUAGE = "z7.ui_language"
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         const val RING_DP = 220

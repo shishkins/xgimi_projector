@@ -15,8 +15,8 @@ android {
         applicationId = "os.z7.miracast"
         minSdk = 28
         targetSdk = 28
-        versionCode = 4
-        versionName = "0.1.3"
+        versionCode = 5
+        versionName = "0.1.4"
     }
 
     signingConfigs {

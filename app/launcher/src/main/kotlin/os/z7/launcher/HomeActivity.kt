@@ -151,7 +151,9 @@ class HomeActivity : Activity() {
         }
         if (AppCatalog.isInstalled(this, LauncherApp.AGENT_PKG)) {
             list += Tiles.action(this, R.drawable.ic_cast, getString(R.string.cast_from_windows)) {
-                launch(Intent().setComponent(ComponentName(LauncherApp.AGENT_PKG, CAST_FROM_WINDOWS)))
+                // язык нашего интерфейса — приёмнику Miracast (у него нет доступа к нашим настройкам)
+                launch(Intent().setComponent(ComponentName(LauncherApp.AGENT_PKG, CAST_FROM_WINDOWS))
+                    .putExtra(EXTRA_UI_LANGUAGE, UiLanguage.code(this)))
             }
         }
         list += Tiles.action(this, R.drawable.ic_settings, getString(R.string.settings)) {
@@ -193,5 +195,6 @@ class HomeActivity : Activity() {
     companion object {
         private const val AIRPLAY_PKG = "os.z7.airplay"
         private const val CAST_FROM_WINDOWS = "os.z7.agent.CastFromWindowsActivity"
+        private const val EXTRA_UI_LANGUAGE = "z7.ui_language"
     }
 }

@@ -4,9 +4,8 @@ import android.app.Activity
 import android.os.Bundle
 
 /**
- * Кнопка «Cast from Windows» в списке приложений: включает режим Miracast
- * (проектор становится виден в Win+K) и сразу закрывается — дальше сессию ведёт агент.
- * Временная точка входа до появления плитки на главном экране нашей системы.
+ * Кнопка «Cast from Windows». Если установлен наш приёмник (os.z7.miracast) — готовим Wi-Fi и
+ * открываем его (см. [OwnMiracast]); иначе — прежний режим со стоковым приёмником ([MiracastMode]).
  */
 class CastFromWindowsActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -14,17 +13,14 @@ class CastFromWindowsActivity : Activity() {
         AgentService.start(this)
         val app = applicationContext
         if (OwnMiracast.installed(this)) {
-            // свой приёмник; сначала — атрибуты WFD, если их сбросила перезагрузка
+            val language = intent.getStringExtra("z7.ui_language")
             Thread {
                 val adb = AdbBridge(app.filesDir)
                 try {
-                    OwnMiracast.ensureWfd(adb)
-                } catch (e: Exception) {
-                    Logf.w("miracast: WFD priming failed: ${e.message}")
+                    OwnMiracast.startSession(app, adb, language)
                 } finally {
                     adb.close()
                 }
-                OwnMiracast.open(app)
             }.start()
             finish()
             return
