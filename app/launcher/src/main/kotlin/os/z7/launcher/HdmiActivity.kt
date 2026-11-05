@@ -39,7 +39,7 @@ class HdmiActivity : Activity() {
     private lateinit var waitingTitle: TextView
     private lateinit var info: TextView
     private var inputId: String? = null
-    /** Сигнал по мнению прошивки (как у стока: getSignalStatus == 3). События TvView здесь врут. */
+    /** Устройство на HDMI подключено (getHdmiConnectStatus). События TvView и getSignalStatus здесь врут. */
     private var hasVideo = false
     private var retries = 0
     private var started = false
@@ -56,7 +56,7 @@ class HdmiActivity : Activity() {
     /** Опрос сигнала раз в секунду, как делает стоковый плеер. */
     private val pollSignal = object : Runnable {
         override fun run() {
-            Gmpf.run(this@HdmiActivity, { Hw.hdmiSignal(it) }) { signal ->
+            Gmpf.run(this@HdmiActivity, { Hw.hdmiConnected(it) }) { signal ->
                 if (!started) return@run
                 if (signal != null) onSignal(signal)
                 main.postDelayed(this, SIGNAL_POLL_MS)
@@ -114,6 +114,7 @@ class HdmiActivity : Activity() {
         hasVideo = false
         retries = 0
         started = true
+        isVisible = true
         waiting.alpha = 1f
         inputId = findInput(this)
         if (inputId == null) {
@@ -138,6 +139,7 @@ class HdmiActivity : Activity() {
     }
 
     override fun onStop() {
+        isVisible = false
         started = false
         main.removeCallbacksAndMessages(null)
         tv.reset()
@@ -198,6 +200,20 @@ class HdmiActivity : Activity() {
 
     companion object {
         const val EXTRA_REPLACING_STOCK = "z7.replacing_stock"
+
+        /** Экран HDMI сейчас на экране — автопереключение не открывает его второй раз. */
+        @Volatile var isVisible = false
+            private set
+
+        /** Своё автопереключение на HDMI (у стокового — китайский отсчёт), по умолчанию включено. */
+        fun autoSwitch(context: Context) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_AUTO, true)
+
+        fun setAutoSwitch(context: Context, on: Boolean) =
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_AUTO, on).apply()
+
+        private const val PREFS = "hdmi"
+        private const val KEY_AUTO = "auto_switch"
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val STOCK_RELEASE_MS = 900L

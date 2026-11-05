@@ -2,6 +2,7 @@ package os.z7.launcher
 
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
+import android.media.tv.TvInputManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -37,6 +38,7 @@ class KeyService : AccessibilityService() {
         miracast = MiracastCover(this)
         // классы gmpf грузятся из APK настроек ~1 с — заранее, а не при первом открытии
         Gmpf.warmUp(this)
+        watchHdmi()
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
@@ -108,6 +110,37 @@ class KeyService : AccessibilityService() {
 
     private var lastHdmiRedirect = 0L
 
+    private var tvInputs: TvInputManager? = null
+    private var hdmiState = -1
+
+    /**
+     * Своё автопереключение на HDMI: стоковое выключаем (у него китайский отсчёт «即将切换至 HDMI»
+     * и китайский плеер), а при подключении устройства сами открываем наш экран.
+     * Вход без устройства — CONNECTED_STANDBY, с устройством — CONNECTED (проверено 2026-11-05).
+     */
+    private val hdmiCallback = object : TvInputManager.TvInputCallback() {
+        override fun onInputStateChanged(inputId: String, state: Int) {
+            if (inputId != HdmiActivity.findInput(this@KeyService)) return
+            val was = hdmiState
+            hdmiState = state
+            if (state == TvInputManager.INPUT_STATE_CONNECTED && was != TvInputManager.INPUT_STATE_CONNECTED &&
+                HdmiActivity.autoSwitch(this@KeyService) && !HdmiActivity.isVisible) {
+                HdmiActivity.open(this@KeyService)
+            }
+        }
+    }
+
+    private fun watchHdmi() {
+        Gmpf.run(this, { Hw.setHdmiAutoSwitch(it, false) })
+        try {
+            val tv = getSystemService(TvInputManager::class.java) ?: return
+            HdmiActivity.findInput(this)?.let { hdmiState = tv.getInputState(it) }
+            tv.registerCallback(hdmiCallback, main)
+            tvInputs = tv
+        } catch (_: Exception) {
+        }
+    }
+
     /**
      * Окно быстрого меню XGIMI (com.android.newsettings) появилось — гасим сразу. Стоковые экраны
      * настроек мы сами не открываем; запасной HOME стока не трогаем.
@@ -121,6 +154,7 @@ class KeyService : AccessibilityService() {
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        try { tvInputs?.unregisterCallback(hdmiCallback) } catch (_: Exception) {}
         if (::panel.isInitialized) panel.dismiss()
         if (::cover.isInitialized) cover.hide()
         if (::miracast.isInitialized) miracast.hide()
@@ -143,7 +177,7 @@ class KeyService : AccessibilityService() {
         /** Стоковый плеер входа HDMI. */
         private const val STOCK_HDMI_PKG = "com.xgimi.xhplayer"
         private const val STOCK_SETTINGS_PKG = "com.android.newsettings"
-        private const val HDMI_REDIRECT_PAUSE_MS = 3_000L
+        private const val HDMI_REDIRECT_PAUSE_MS = 1_000L
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null

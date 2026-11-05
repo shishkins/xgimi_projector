@@ -272,18 +272,15 @@ class SettingsActivity : Activity() {
     private fun hdmi(c: LinearLayout) {
         c.addView(row(R.drawable.ic_hdmi, R.string.hdmi_open) { HdmiActivity.open(this) })
         val autoSwitch = Ui.Toggle(this, R.drawable.ic_hdmi, getString(R.string.hdmi_auto_switch),
-            getString(R.string.hdmi_auto_switch_hint)) { on -> Gmpf.run(this, { Hw.setHdmiAutoSwitch(it, on) }) }
+            getString(R.string.hdmi_auto_switch_hint)) { on -> HdmiActivity.setAutoSwitch(this, on) }
         val cec = Ui.Toggle(this, R.drawable.ic_hdmi, getString(R.string.hdmi_cec),
             getString(R.string.hdmi_cec_hint)) { on -> Gmpf.run(this, { Hw.setCecWake(it, on) }) }
         listOf(autoSwitch, cec).forEach {
             it.set(null)
             c.addView(it, spaced())
         }
-        Gmpf.run(this, { b -> Hw.hdmiAutoSwitch(b) to Hw.cecWake(b) }) { values ->
-            if (values == null) return@run
-            autoSwitch.set(values.first)
-            cec.set(values.second)
-        }
+        autoSwitch.set(HdmiActivity.autoSwitch(this))
+        Gmpf.run(this, { b -> Hw.cecWake(b) }) { on -> if (on != null) cec.set(on) }
     }
 
     private fun system(c: LinearLayout) {
