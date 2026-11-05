@@ -51,6 +51,19 @@ object Config {
     /** Сколько ждать после HOME, пока сток вернёт домашнюю Wi-Fi (он делает это через ~2 с). */
     const val MIRACAST_WIFI_RESTORE_MS = 6_000L
 
+    /**
+     * Держать домашнюю Wi-Fi во время Miracast (`persist.z7.miracast_keep_wifi` = 1/0).
+     * Сток отключает все сохранённые сети (WifiSwitchManager.disable), агент включает домашнюю
+     * обратно через IWifiManager.enableNetwork от имени shell (у него NETWORK_SETTINGS).
+     * Цена: P2P-группа делит радио с домашней сетью (её канал 2.4 ГГц). По умолчанию выключено.
+     */
+    const val MIRACAST_KEEP_WIFI_PROP = "persist.z7.miracast_keep_wifi"
+    const val MIRACAST_KEEP_WIFI_DEFAULT = false
+
+    /** Номера вызовов IWifiManager на Android 9 этой прошивки (framework.jar, IWifiManager.Stub). */
+    const val WIFI_TX_ENABLE_NETWORK = 17
+    const val WIFI_TX_RECONNECT = 22
+
     /** Сколько дать стоковому приёмнику на запуск, прежде чем сбросить первую P2P-группу. */
     const val MIRACAST_RECEIVER_READY_MS = 3_000L
 

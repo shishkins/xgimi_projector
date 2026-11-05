@@ -50,8 +50,11 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
     }
 
     private fun begin(connected: Boolean) {
+        val homeId = homeNetworkId()
         prefs.edit().putLong(KEY_REQUESTED_AT, System.currentTimeMillis())
-            .putBoolean(KEY_CONNECTED, connected).apply()
+            .putBoolean(KEY_CONNECTED, connected)
+            .putInt(KEY_HOME_NET_ID, homeId).apply()
+        Logf.w("miracast: home network id=$homeId keepWifi=${keepWifi()}")
         lostSince = 0L
         adb.run("pm enable ${Config.STOCK_CAST_PKG}")
         adb.run("am start -a ${Config.MIRACAST_ACTION}")
@@ -67,6 +70,7 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         val groupFormed = adb.run("dumpsys wifip2p | grep groupFormed")
             ?.contains("groupFormed: true") == true
         val connected = prefs.getBoolean(KEY_CONNECTED, false)
+        keepHomeWifi()
 
         when {
             groupFormed -> {
@@ -111,9 +115,48 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         lostSince = 0L
     }
 
+    /**
+     * Сток отключил сохранённые сети — включить домашнюю обратно (см. [Config.MIRACAST_KEEP_WIFI_PROP]).
+     * Остальные сети не трогаем: их вернёт сам сток при выходе (WifiSwitchManager.enable).
+     */
+    private fun keepHomeWifi() {
+        if (!keepWifi()) return
+        val id = prefs.getInt(KEY_HOME_NET_ID, -1)
+        if (id < 0) return
+        val info = adb.run("dumpsys wifi | grep -m1 mNetworkInfo").orEmpty()
+        if (info.contains("CONNECTED/CONNECTED") || info.contains("CONNECTING")) return
+        val r = adb.run("service call wifi ${Config.WIFI_TX_ENABLE_NETWORK} i32 $id i32 0 s16 com.android.shell")
+        adb.run("service call wifi ${Config.WIFI_TX_RECONNECT} s16 com.android.shell")
+        Logf.w("miracast: home Wi-Fi re-enabled (id=$id): ${r?.trim()}")
+    }
+
+    /** id сети, к которой проектор подключён сейчас (-1, если ни к какой). */
+    private fun homeNetworkId(): Int {
+        val line = adb.run("dumpsys wifi | grep -m1 mWifiInfo").orEmpty()
+        return NET_ID.find(line)?.groupValues?.get(1)?.toIntOrNull() ?: -1
+    }
+
+    private var keepWifiProp: Boolean? = null
+    private var keepWifiAt = 0L
+
+    private fun keepWifi(): Boolean {
+        val now = System.currentTimeMillis()
+        if (keepWifiAt == 0L || now - keepWifiAt >= Config.BEACON_PROP_EVERY_MS) {
+            keepWifiAt = now
+            keepWifiProp = when (adb.run("getprop ${Config.MIRACAST_KEEP_WIFI_PROP}")?.trim()) {
+                "1", "true" -> true
+                "0", "false" -> false
+                else -> null
+            }
+        }
+        return keepWifiProp ?: Config.MIRACAST_KEEP_WIFI_DEFAULT
+    }
+
     companion object {
         private const val PREFS = "miracast"
         private const val KEY_REQUESTED_AT = "requested_at"
         private const val KEY_CONNECTED = "connected"
+        private const val KEY_HOME_NET_ID = "home_net_id"
+        private val NET_ID = Regex("Net ID: (-?\\d+)")
     }
 }
