@@ -45,6 +45,26 @@ class AgentService : Service() {
     private var loopJob: Job? = null
 
     /** Windows подключилась по Win+K: P2P-группа сформирована — сразу открываем приёмник. */
+    /**
+     * Лаунчер обновился (adb install -r, в будущем — обновление по воздуху): служба кнопок пульта
+     * после этого может остаться подключённой лишь наполовину — клавиши не доходят (2026-11-05).
+     * Переподключаем её: убрать из списка и вернуть.
+     */
+    private val launcherUpdated = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.data?.schemeSpecificPart != Config.LAUNCHER_PKG) return
+            scope.launch {
+                Logf.w("keys: launcher updated — rebinding ${Config.KEY_SERVICE}")
+                val current = adb.run("settings get secure enabled_accessibility_services")?.trim().orEmpty()
+                val without = current.split(':').filter { it.isNotEmpty() && it != "null" && it != Config.KEY_SERVICE }
+                adb.run("settings put secure enabled_accessibility_services " +
+                    (without.joinToString(":").ifEmpty { "null" }))
+                delay(Config.KEYS_REBIND_PAUSE_MS)
+                ensureKeyService()
+            }
+        }
+    }
+
     private val p2pReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (isInitialStickyBroadcast) return // старое состояние на момент регистрации
@@ -76,6 +96,7 @@ class AgentService : Service() {
         // команды `am broadcast` к SettingsReceiver через dadb зависают.
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         registerReceiver(p2pReceiver, IntentFilter(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION))
+        registerReceiver(launcherUpdated, IntentFilter(Intent.ACTION_PACKAGE_REPLACED).apply { addDataScheme("package") })
         loopJob = scope.launch {
             // кнопки пульта — первыми: без службы долгое «меню» открывает китайское меню
             ensureKeyService()
@@ -266,6 +287,7 @@ class AgentService : Service() {
         loopJob?.cancel()
         scope.cancel()
         unregisterReceiver(p2pReceiver)
+        unregisterReceiver(launcherUpdated)
         adb.close()
         super.onDestroy()
     }

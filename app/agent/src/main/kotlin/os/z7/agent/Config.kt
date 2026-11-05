@@ -124,6 +124,9 @@ object Config {
     /** Как часто проверять, что служба кнопок пульта лаунчера включена. */
     const val KEYS_CHECK_MS = 30_000L
 
+    /** Пауза между «убрать» и «вернуть» службу кнопок при переподключении. */
+    const val KEYS_REBIND_PAUSE_MS = 2_000L
+
     /** Стоковые настройки XGIMI: в них быстрое меню, которое всплывает под нашей панелью. */
     const val STOCK_SETTINGS_PKG = "com.android.newsettings"
 
