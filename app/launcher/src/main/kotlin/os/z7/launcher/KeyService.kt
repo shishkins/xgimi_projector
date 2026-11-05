@@ -31,8 +31,6 @@ class KeyService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        KeyLog.init(this)
-        KeyLog.w("service connected")
         panel = QuickPanel(this)
         cover = AkCover(this)
         miracast = MiracastCover(this)
@@ -44,17 +42,7 @@ class KeyService : AccessibilityService() {
         if (!::panel.isInitialized) return false
         when (event.keyCode) {
             KEY_QUICK_MENU -> {
-                val at = SystemClock.uptimeMillis()
-                KeyLog.w("key MOVE_HOME action=${event.action} repeat=${event.repeatCount} " +
-                    "age=${at - event.eventTime}ms panelShown=${panel.isShown}")
-                // XGIMI открывает своё меню на ОТПУСКАНИИ, а пульт шлёт «нажата» и «отпущена» почти
-                // одновременно. Если строить панель по «нажата», ответ на «отпущена» ждёт постройку
-                // в главном потоке дольше 500 мс — и клавиша уходит прошивке. Поэтому отвечаем на обе
-                // половины сразу, а панель строим после «отпущена».
-                if (event.action == KeyEvent.ACTION_UP) main.post {
-                    KeyLog.w("toggle after ${SystemClock.uptimeMillis() - at}ms in queue")
-                    panel.toggle()
-                }
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) main.post { panel.toggle() }
                 return true
             }
             // HOME окну не доставляется — сами убираем панель, а клавишу пропускаем дальше
@@ -76,8 +64,6 @@ class KeyService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null || !::cover.isInitialized) return
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
-        KeyLog.w("window ${event.packageName} / ${event.className} full=${event.isFullScreen}")
-        onStockMenu(event)
         val fromSystemUi = event.packageName == XGIMI_SYSTEMUI
         val cls = event.className?.toString()
         onMiracastWindow(event, cls)
@@ -120,22 +106,6 @@ class KeyService : AccessibilityService() {
 
     private var lastHdmiRedirect = 0L
 
-    /**
-     * Страховка: быстрое меню XGIMI всё-таки открылось (клавиша прошла мимо нас) — закрыть его
-     * и открыть наш центр управления. Стоковые экраны настроек мы сами не открываем, поэтому
-     * любое окно com.android.newsettings, кроме запасного HOME, — это их меню.
-     */
-    private fun onStockMenu(event: AccessibilityEvent) {
-        if (event.packageName != STOCK_SETTINGS_PKG) return
-        if (event.className?.toString()?.contains("FallbackHome") == true) return
-        KeyLog.w("stock menu window — closing it, opening ours")
-        main.post {
-            sendBroadcast(android.content.Intent(android.content.Intent.ACTION_CLOSE_SYSTEM_DIALOGS)
-                .putExtra("reason", packageName))
-            if (!panel.isShown) panel.show()
-        }
-    }
-
     override fun onInterrupt() {}
 
     override fun onDestroy() {
@@ -161,7 +131,6 @@ class KeyService : AccessibilityService() {
 
         /** Стоковый плеер входа HDMI. */
         private const val STOCK_HDMI_PKG = "com.xgimi.xhplayer"
-        private const val STOCK_SETTINGS_PKG = "com.android.newsettings"
         private const val HDMI_REDIRECT_PAUSE_MS = 3_000L
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
