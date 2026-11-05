@@ -1,18 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- «стеклянная» карточка; в фокусе — светлее и с белой рамкой -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- плитка приложения в библиотеке: в фокусе — белая рамка поверх баннера -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:enterFadeDuration="110"
+    android:exitFadeDuration="110">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <corners android:radius="14dp" />
+            <corners android:radius="12dp" />
             <solid android:color="@color/tile_focused" />
             <stroke
                 android:width="3dp"
-                android:color="@color/text_primary" />
+                android:color="@color/focus_ring" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <corners android:radius="14dp" />
+            <corners android:radius="12dp" />
             <solid android:color="@color/tile_idle" />
             <stroke
                 android:width="1dp"

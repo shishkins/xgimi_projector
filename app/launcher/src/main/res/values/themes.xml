@@ -7,13 +7,19 @@
         <item name="android:windowShowWallpaper">false</item>
     </style>
 
-    <!-- круглая кнопка-значок в шапке (Wi-Fi, настройки) -->
+    <!-- экран HDMI: чёрный фон, без анимации входа — картинка источника сразу на весь экран -->
+    <style name="Theme.Hdmi" parent="Theme.Home">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+
+    <!-- круглая кнопка-значок в шапке (Wi-Fi, настройки): в фокусе белая, значок тёмный -->
     <style name="StatusButton">
-        <item name="android:layout_width">52dp</item>
-        <item name="android:layout_height">52dp</item>
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
         <item name="android:layout_marginEnd">12dp</item>
-        <item name="android:padding">13dp</item>
+        <item name="android:padding">12dp</item>
         <item name="android:background">@drawable/status_bg</item>
+        <item name="android:tint">@color/on_card</item>
         <item name="android:focusable">true</item>
         <item name="android:clickable">true</item>
         <item name="android:scaleType">fitCenter</item>

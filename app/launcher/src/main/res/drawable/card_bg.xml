@@ -1,20 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- карточка наших экранов: в покое — едва заметное стекло, в фокусе — светлее с белой рамкой -->
+<!-- карточка и строка наших экранов: в покое — едва заметное стекло, в фокусе — белая (как в меню консоли) -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:enterFadeDuration="120"
-    android:exitFadeDuration="120">
+    android:enterFadeDuration="110"
+    android:exitFadeDuration="110">
     <item android:state_focused="true">
         <shape android:shape="rectangle">
-            <corners android:radius="16dp" />
+            <corners android:radius="14dp" />
             <solid android:color="@color/card_focused" />
-            <stroke
-                android:width="2dp"
-                android:color="@color/text_primary" />
         </shape>
     </item>
     <item>
         <shape android:shape="rectangle">
-            <corners android:radius="16dp" />
+            <corners android:radius="14dp" />
             <solid android:color="@color/card_idle" />
         </shape>
     </item>

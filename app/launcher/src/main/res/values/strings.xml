@@ -15,7 +15,7 @@
     <string name="launch_failed">Couldn\'t open the app</string>
 
     <!-- быстрая панель -->
-    <string name="quick_title">Quick Settings</string>
+    <string name="quick_title">Control Center</string>
     <string name="quick_auto_focus">Auto Focus</string>
     <string name="quick_auto_keystone">Auto Keystone</string>
     <string name="quick_keystone">Keystone</string>
@@ -76,7 +76,7 @@
 
     <!-- настройки -->
     <string name="section_network">Network</string>
-    <string name="section_projection">Picture &amp; Projection</string>
+    <string name="section_projection">Projection</string>
     <string name="section_sound">Sound</string>
     <string name="section_system">System</string>
     <string name="language">Language</string>
@@ -96,4 +96,76 @@
     <string name="miracast_step_press">On your computer press</string>
     <string name="miracast_step_choose">and choose</string>
     <string name="miracast_footer">Home Wi‑Fi is paused while casting  ·  Back — exit</string>
+
+    <!-- главный экран -->
+    <string name="tab_apps">Apps</string>
+    <string name="tab_media">Media</string>
+    <string name="open">Open</string>
+    <string name="options">Options</string>
+    <string name="uninstall">Uninstall</string>
+    <string name="library">Library</string>
+    <plurals name="library_count">
+        <item quantity="one">%d app</item>
+        <item quantity="other">%d apps</item>
+    </plurals>
+    <string name="hdmi_hint">Game console, computer or TV box</string>
+    <string name="hdmi_status_connected">Device connected</string>
+    <string name="hdmi_status_empty">Nothing connected</string>
+    <string name="airplay_hint">Mirror the screen or play video from iPhone, iPad or Mac — choose “XGIMI Projector”</string>
+    <string name="windows_hint">Show your Windows computer on the big screen: press Win + K and choose “XGIMI Projector”</string>
+
+    <!-- HDMI -->
+    <string name="hdmi_no_signal">No signal</string>
+    <string name="hdmi_no_signal_hint">Turn on the connected device or check the HDMI cable</string>
+    <string name="hdmi_not_found">HDMI input not found</string>
+    <string name="hdmi_footer">Back — home  ·  hold Menu — control center</string>
+    <string name="hdmi_open">Open HDMI</string>
+    <string name="hdmi_auto_switch">Switch to HDMI automatically</string>
+    <string name="hdmi_auto_switch_hint">When a device is connected or turned on</string>
+    <string name="hdmi_cec">Control with the connected device (HDMI-CEC)</string>
+    <string name="hdmi_cec_hint">The projector turns on together with a console or TV box</string>
+
+    <!-- изображение -->
+    <string name="section_picture">Picture</string>
+    <string name="section_hdmi">HDMI</string>
+    <string name="picture_mode">Picture mode</string>
+    <string name="pm_smart">Smart</string>
+    <string name="pm_standard">Standard</string>
+    <string name="pm_bright">Bright</string>
+    <string name="pm_soft">Soft</string>
+    <string name="pm_office">Office</string>
+    <string name="pm_sport">Sport</string>
+    <string name="pm_custom">Custom</string>
+    <string name="picture_brightness">Picture brightness</string>
+    <string name="picture_contrast">Contrast</string>
+    <string name="picture_saturation">Saturation</string>
+    <string name="picture_sharpness">Sharpness</string>
+    <string name="color_temperature">Color temperature</string>
+    <string name="ct_cool">Cool</string>
+    <string name="ct_standard">Standard</string>
+    <string name="ct_warm">Warm</string>
+    <string name="motion_smoothing">Motion smoothing</string>
+    <string name="noise_reduction">Noise reduction</string>
+    <string name="level_off">Off</string>
+    <string name="level_low">Low</string>
+    <string name="level_medium">Medium</string>
+    <string name="level_high">High</string>
+    <string name="picture_reset">Reset picture</string>
+    <string name="picture_reset_title">Reset the picture settings of this mode?</string>
+    <string name="hardware_unavailable">The projector settings service isn\'t responding</string>
+
+    <!-- проекция -->
+    <string name="projection_side">Projection</string>
+    <string name="side_front">Front</string>
+    <string name="side_rear">Rear (behind the screen)</string>
+    <string name="projection_mount">Mounting</string>
+    <string name="mount_auto">Automatic</string>
+    <string name="mount_table">Table</string>
+    <string name="mount_ceiling">Ceiling</string>
+    <string name="keystone_on_move">Auto keystone when moved</string>
+    <string name="keystone_on_move_hint">Corrects the picture after the projector is moved</string>
+    <string name="focus_on_move">Auto focus when moved</string>
+    <string name="focus_on_move_hint">Refocuses after the projector is moved or tilted</string>
+    <string name="focus_on_start">Auto focus at start-up</string>
+    <string name="boot_sound">Start-up sound</string>
 </resources>

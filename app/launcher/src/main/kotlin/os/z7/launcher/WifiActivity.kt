@@ -150,8 +150,8 @@ class WifiActivity : Activity() {
             addView(SignalView(context, n.level), LinearLayout.LayoutParams(Ui.dp(context, 26), Ui.dp(context, 22)).apply {
                 marginEnd = Ui.dp(context, 18)
             })
-            addView(Ui.text(context, n.ssid, 19f), LinearLayout.LayoutParams(0, WRAP, 1f))
-            addView(Ui.text(context, value, 16f, secondary = !n.connected).apply {
+            addView(Ui.cardText(context, n.ssid, 19f), LinearLayout.LayoutParams(0, WRAP, 1f))
+            addView(Ui.cardText(context, value, 16f, secondary = !n.connected).apply {
                 if (n.connected) setTextColor(context.getColor(R.color.accent))
             })
             Ui.focusable(this, Ui.ROW_FOCUS_SCALE)
@@ -248,10 +248,21 @@ class WifiActivity : Activity() {
 
     /** Сила сигнала — четыре столбика. */
     private class SignalView(context: Context, private val level: Int) : View(context) {
-        private val on = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.text_primary) }
-        private val off = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = context.getColor(R.color.bar_track) }
+        private val on = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val off = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        init { isDuplicateParentStateEnabled = true }
+
+        override fun drawableStateChanged() {
+            super.drawableStateChanged()
+            invalidate()
+        }
 
         override fun onDraw(canvas: Canvas) {
+            // на белой строке в фокусе полоски темнеют
+            val focused = drawableState.contains(android.R.attr.state_focused)
+            on.color = context.getColor(if (focused) R.color.text_on_focus else R.color.text_primary)
+            off.color = context.getColor(if (focused) R.color.bar_track_focused else R.color.bar_track)
             val bars = Wifi.SIGNAL_LEVELS
             val gap = width * 0.12f
             val w = (width - gap * (bars - 1)) / bars

@@ -74,7 +74,7 @@ class Keyboard(
         text = label
         gravity = Gravity.CENTER
         textSize = 20f
-        setTextColor(context.getColor(R.color.text_primary))
+        setTextColor(context.getColorStateList(R.color.on_card))
         Ui.focusable(this, KEY_FOCUS_SCALE)
         setOnClickListener { action() }
         layoutParams = LayoutParams(Ui.dp(context, widthDp), Ui.dp(context, KEY_HEIGHT)).apply {

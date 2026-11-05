@@ -86,6 +86,42 @@ object AppCatalog {
         return FAVORITES.mapNotNull { byPkg[it] }
     }
 
+    /**
+     * Ряд главного экрана: сначала недавно открытые (последнее — первым), затем избранное,
+     * затем остальные по алфавиту — не больше [limit].
+     */
+    fun homeRow(context: Context, all: List<AppEntry>, limit: Int): List<AppEntry> {
+        val byPkg = all.associateBy { it.packageName }
+        val order = LinkedHashSet<String>()
+        recent(context).forEach { if (it in byPkg) order += it }
+        FAVORITES.forEach { if (it in byPkg) order += it }
+        all.forEach { order += it.packageName }
+        return order.take(limit).mapNotNull { byPkg[it] }
+    }
+
+    /** Запомнить запуск — приложение встанет первым в ряду. */
+    fun noteLaunch(context: Context, pkg: String) {
+        val list = listOf(pkg) + recent(context).filter { it != pkg }
+        prefs(context).edit().putString(KEY_RECENT, list.take(RECENT_MAX).joinToString(",")).apply()
+    }
+
+    private fun recent(context: Context): List<String> =
+        prefs(context).getString(KEY_RECENT, "")!!.split(',').filter { it.isNotEmpty() }
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /** Установлено пользователем (можно удалить), а не частью прошивки. */
+    fun isUserApp(context: Context, pkg: String): Boolean = try {
+        val flags = context.packageManager.getApplicationInfo(pkg, 0).flags
+        (flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
+    }
+
+    private const val PREFS = "home"
+    private const val KEY_RECENT = "recent"
+    private const val RECENT_MAX = 20
+
     fun isInstalled(context: Context, pkg: String): Boolean = try {
         context.packageManager.getPackageInfo(pkg, 0)
         true

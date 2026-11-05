@@ -3,6 +3,7 @@ package os.z7.launcher
 import android.accessibilityservice.AccessibilityService
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 
@@ -66,6 +67,7 @@ class KeyService : AccessibilityService() {
         val fromSystemUi = event.packageName == XGIMI_SYSTEMUI
         val cls = event.className?.toString()
         onMiracastWindow(event, cls)
+        onStockHdmi(event)
         when {
             fromSystemUi && cls == AK_DIALOG_CLASS && event.isFullScreen -> cover.show(AkCover.Mode.RUNNING)
             fromSystemUi && cls == AK_DONE_CLASS && cover.mode == AkCover.Mode.RUNNING -> cover.show(AkCover.Mode.DONE)
@@ -90,6 +92,20 @@ class KeyService : AccessibilityService() {
         }
     }
 
+    /**
+     * Стоковый плеер HDMI (его открывает прошивка при подключении устройства, если включено
+     * автопереключение) — с китайскими подсказками. Сразу открываем свой экран HDMI поверх.
+     */
+    private fun onStockHdmi(event: AccessibilityEvent) {
+        if (event.packageName != STOCK_HDMI_PKG) return
+        val now = SystemClock.uptimeMillis()
+        if (now - lastHdmiRedirect < HDMI_REDIRECT_PAUSE_MS) return
+        lastHdmiRedirect = now
+        main.post { HdmiActivity.open(this, replacingStock = true) }
+    }
+
+    private var lastHdmiRedirect = 0L
+
     override fun onInterrupt() {}
 
     override fun onDestroy() {
@@ -112,6 +128,10 @@ class KeyService : AccessibilityService() {
         private const val STOCK_CAST_PKG = "com.xgimi.wirelessscreen"
         private const val WFD_WAIT_CLASS = "com.xgimi.wfd.WifiDisplayActivity"
         private const val WFD_MIRROR_CLASS = "com.xgimi.wfd.mirror.MirCastActivity"
+
+        /** Стоковый плеер входа HDMI. */
+        private const val STOCK_HDMI_PKG = "com.xgimi.xhplayer"
+        private const val HDMI_REDIRECT_PAUSE_MS = 3_000L
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null

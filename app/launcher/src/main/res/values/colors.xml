@@ -1,21 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- общая палитра: глубокий тёмно-синий фон, белый фокус, тёмный текст на фокусе -->
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color>
-    <color name="accent">#FF4C8DFF</color>
+    <color name="text_dim">#73FFFFFF</color>
+    <color name="text_on_focus">#FF0A0D16</color>
+    <color name="text_on_focus_secondary">#B30A0D16</color>
+    <color name="accent">#FF3D8BFF</color>
     <color name="error">#FFFF5A5F</color>
-    <color name="wall_top">#FF10162B</color>
-    <color name="wall_bottom">#FF05070D</color>
-    <color name="wall_glow">#FF2A2160</color>
+    <color name="wall_top">#FF0B1838</color>
+    <color name="wall_bottom">#FF03050C</color>
+    <color name="wall_glow">#FF1B3A8A</color>
     <color name="tile_idle">#1FFFFFFF</color>
     <color name="tile_idle_stroke">#24FFFFFF</color>
     <color name="tile_focused">#3DFFFFFF</color>
-    <color name="panel_bg">#F2111522</color>
+    <color name="focus_fill">#FFF4F6FA</color>
+    <color name="focus_ring">#FFFFFFFF</color>
+    <color name="panel_bg">#F20A0F1C</color>
+    <color name="panel_line">#1AFFFFFF</color>
     <color name="card_idle">#14FFFFFF</color>
-    <color name="card_focused">#38FFFFFF</color>
+    <color name="card_focused">#FFF4F6FA</color>
     <color name="scrim">#8C000000</color>
+    <color name="hero_scrim_start">#F2030510</color>
+    <color name="hero_scrim_end">#00030510</color>
     <color name="keystone_scrim">#B8000000</color>
     <color name="bar_track">#33FFFFFF</color>
+    <color name="bar_track_focused">#260A0D16</color>
+    <color name="switch_off">#40FFFFFF</color>
     <color name="grid_line">#40FFFFFF</color>
     <color name="handle_idle">#99FFFFFF</color>
     <!-- цвет плашки калибровки XGIMI, которую мы накрываем -->

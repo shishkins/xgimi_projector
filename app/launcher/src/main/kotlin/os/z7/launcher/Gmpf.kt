@@ -168,6 +168,42 @@ object Gmpf {
                 .invoke(display, level.coerceIn(1, BRIGHTNESS_MAX).toByte())
         }
 
+        private val managers = HashMap<String, Pair<Class<*>, Any>>()
+
+        /**
+         * Вызов метода менеджера gmpf (`com.xgimi.gmpf.api.<manager>`) по имени и числу аргументов.
+         * Числа и логические значения приводятся к типам параметров (byte, int, boolean).
+         * Только для методов без перегрузок с тем же числом аргументов.
+         */
+        fun call(manager: String, method: String, vararg args: Any): Any? {
+            val (c, instance) = managers.getOrPut(manager) {
+                val k = cls("com.xgimi.gmpf.api.$manager")
+                k to k.getMethod("getInstance").invoke(null)!!
+            }
+            val m = c.methods.first { it.name == method && it.parameterTypes.size == args.size }
+            val converted = Array(args.size) { i -> convert(args[i], m.parameterTypes[i]) }
+            return m.invoke(instance, *converted)
+        }
+
+        fun int(manager: String, method: String, vararg args: Any): Int = when (val r = call(manager, method, *args)) {
+            is Number -> r.toInt()
+            is Boolean -> if (r) 1 else 0
+            else -> throw IllegalStateException("$manager.$method returned $r")
+        }
+
+        fun bool(manager: String, method: String, vararg args: Any): Boolean = when (val r = call(manager, method, *args)) {
+            is Boolean -> r
+            is Number -> r.toInt() != 0
+            else -> throw IllegalStateException("$manager.$method returned $r")
+        }
+
+        private fun convert(v: Any, type: Class<*>): Any = when (type) {
+            java.lang.Byte.TYPE -> if (v is Boolean) (if (v) 1 else 0).toByte() else (v as Number).toByte()
+            java.lang.Boolean.TYPE -> if (v is Boolean) v else (v as Number).toInt() != 0
+            java.lang.Integer.TYPE -> if (v is Boolean) (if (v) 1 else 0) else (v as Number).toInt()
+            else -> v
+        }
+
         @Suppress("UNCHECKED_CAST")
         private fun points(full: Any) = fullCls.getField("coordinates").get(full) as Array<Array<Any>>
 

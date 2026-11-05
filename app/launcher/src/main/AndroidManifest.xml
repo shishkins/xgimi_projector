@@ -51,6 +51,21 @@
             android:screenOrientation="landscape" />
 
         <activity
+            android:name=".LibraryActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
+        <!-- свой экран входа HDMI вместо стокового плеера XGIMI -->
+        <activity
+            android:name=".HdmiActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation|screenSize|smallestScreenSize|screenLayout"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.Hdmi" />
+
+        <activity
             android:name=".WifiActivity"
             android:exported="false"
             android:screenOrientation="landscape" />

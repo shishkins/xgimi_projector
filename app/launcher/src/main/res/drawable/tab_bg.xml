@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- вкладка шапки: в фокусе — белая «пилюля», в покое — без фона -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:enterFadeDuration="110"
+    android:exitFadeDuration="110">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <corners android:radius="100dp" />
+            <solid android:color="@color/focus_fill" />
+        </shape>
+    </item>
+    <item android:drawable="@android:color/transparent" />
+</selector>

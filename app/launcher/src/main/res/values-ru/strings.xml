@@ -14,7 +14,7 @@
     <string name="action_failed">Не получилось — попробуйте ещё раз</string>
     <string name="launch_failed">Не удалось открыть приложение</string>
 
-    <string name="quick_title">Быстрые настройки</string>
+    <string name="quick_title">Центр управления</string>
     <string name="quick_auto_focus">Автофокус</string>
     <string name="quick_auto_keystone">Автотрапеция</string>
     <string name="quick_keystone">Трапеция</string>
@@ -72,7 +72,7 @@
     <string name="key_space">Пробел</string>
 
     <string name="section_network">Сеть</string>
-    <string name="section_projection">Изображение и проекция</string>
+    <string name="section_projection">Проекция</string>
     <string name="section_sound">Звук</string>
     <string name="section_system">Система</string>
     <string name="language">Язык</string>
@@ -92,4 +92,78 @@
     <string name="miracast_step_press">На компьютере нажмите</string>
     <string name="miracast_step_choose">и выберите</string>
     <string name="miracast_footer">На время трансляции домашняя Wi‑Fi отключается  ·  Назад — выход</string>
+
+    <!-- главный экран -->
+    <string name="tab_apps">Приложения</string>
+    <string name="tab_media">Медиа</string>
+    <string name="open">Открыть</string>
+    <string name="options">Действия</string>
+    <string name="uninstall">Удалить</string>
+    <string name="library">Библиотека</string>
+    <plurals name="library_count">
+        <item quantity="one">%d приложение</item>
+        <item quantity="few">%d приложения</item>
+        <item quantity="many">%d приложений</item>
+        <item quantity="other">%d приложения</item>
+    </plurals>
+    <string name="hdmi_hint">Игровая приставка, компьютер или ТВ-приставка</string>
+    <string name="hdmi_status_connected">Устройство подключено</string>
+    <string name="hdmi_status_empty">Ничего не подключено</string>
+    <string name="airplay_hint">Повтор экрана или видео с iPhone, iPad и Mac — выберите «XGIMI Projector»</string>
+    <string name="windows_hint">Экран компьютера с Windows на стене: нажмите Win + K и выберите «XGIMI Projector»</string>
+
+    <!-- HDMI -->
+    <string name="hdmi_no_signal">Нет сигнала</string>
+    <string name="hdmi_no_signal_hint">Включите подключённое устройство или проверьте кабель HDMI</string>
+    <string name="hdmi_not_found">Вход HDMI не найден</string>
+    <string name="hdmi_footer">Назад — домой  ·  удерживайте Меню — центр управления</string>
+    <string name="hdmi_open">Открыть HDMI</string>
+    <string name="hdmi_auto_switch">Переключаться на HDMI автоматически</string>
+    <string name="hdmi_auto_switch_hint">Когда устройство подключают или включают</string>
+    <string name="hdmi_cec">Управление с подключённого устройства (HDMI-CEC)</string>
+    <string name="hdmi_cec_hint">Проектор включается вместе с приставкой</string>
+
+    <!-- изображение -->
+    <string name="section_picture">Изображение</string>
+    <string name="section_hdmi">HDMI</string>
+    <string name="picture_mode">Режим изображения</string>
+    <string name="pm_smart">Умный</string>
+    <string name="pm_standard">Стандартный</string>
+    <string name="pm_bright">Яркий</string>
+    <string name="pm_soft">Мягкий</string>
+    <string name="pm_office">Офис</string>
+    <string name="pm_sport">Спорт</string>
+    <string name="pm_custom">Свой</string>
+    <string name="picture_brightness">Яркость картинки</string>
+    <string name="picture_contrast">Контраст</string>
+    <string name="picture_saturation">Насыщенность</string>
+    <string name="picture_sharpness">Резкость</string>
+    <string name="color_temperature">Цветовая температура</string>
+    <string name="ct_cool">Холодная</string>
+    <string name="ct_standard">Стандартная</string>
+    <string name="ct_warm">Тёплая</string>
+    <string name="motion_smoothing">Сглаживание движения</string>
+    <string name="noise_reduction">Шумоподавление</string>
+    <string name="level_off">Выкл.</string>
+    <string name="level_low">Слабое</string>
+    <string name="level_medium">Среднее</string>
+    <string name="level_high">Сильное</string>
+    <string name="picture_reset">Сбросить изображение</string>
+    <string name="picture_reset_title">Сбросить настройки картинки этого режима?</string>
+    <string name="hardware_unavailable">Служба настроек проектора не отвечает</string>
+
+    <!-- проекция -->
+    <string name="projection_side">Проекция</string>
+    <string name="side_front">Спереди</string>
+    <string name="side_rear">Сзади (за экраном)</string>
+    <string name="projection_mount">Установка</string>
+    <string name="mount_auto">Автоматически</string>
+    <string name="mount_table">На столе</string>
+    <string name="mount_ceiling">На потолке</string>
+    <string name="keystone_on_move">Автотрапеция при перемещении</string>
+    <string name="keystone_on_move_hint">Выравнивает картинку, когда проектор передвинули</string>
+    <string name="focus_on_move">Автофокус при перемещении</string>
+    <string name="focus_on_move_hint">Наводит резкость, когда проектор сдвинули или наклонили</string>
+    <string name="focus_on_start">Автофокус при включении</string>
+    <string name="boot_sound">Звук при включении</string>
 </resources>
