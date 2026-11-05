@@ -143,6 +143,7 @@ class HdmiActivity : Activity() {
         started = false
         main.removeCallbacksAndMessages(null)
         tv.reset()
+        Gmpf.run(this, { Hw.switchToAndroid(it) })
         hasVideo = false
         focusRequest?.let { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(it) }
         super.onStop()
@@ -162,6 +163,13 @@ class HdmiActivity : Activity() {
     private fun tune() {
         val id = inputId ?: return
         tv.tune(id, TvContract.buildChannelUriForPassthroughInput(id))
+        // сам tune видеотракт не переключает — так же, как сток, переключаем источник на порт
+        val port = when {
+            id.contains("Hdmi2", ignoreCase = true) -> 2
+            id.contains("Hdmi3", ignoreCase = true) -> 3
+            else -> 1
+        }
+        Gmpf.run(this, { Hw.switchToHdmi(it, port) })
         scheduleRetune()
     }
 

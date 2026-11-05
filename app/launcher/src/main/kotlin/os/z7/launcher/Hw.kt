@@ -128,6 +128,13 @@ object Hw {
      */
     fun hdmiConnected(b: Gmpf.Bridge) = (0..3).any { b.bool(TV, "getHdmiConnectStatus", it) }
 
+    /**
+     * Переключить видеотракт на HDMI-порт (1..3) / обратно на Android (0) — как стоковый плеер
+     * (TV.switchInputSource / switchToMM). Без этого TvView настроен, но на экране чёрное.
+     */
+    fun switchToHdmi(b: Gmpf.Bridge, port: Int) = b.call(TV, "switchInputSource", port)
+    fun switchToAndroid(b: Gmpf.Bridge) = b.call(TV, "switchInputSource", 0)
+
     fun bootSound(b: Gmpf.Bridge) = b.bool(SYSTEM, "isPowerOnMusicEnabled")
     fun setBootSound(b: Gmpf.Bridge, on: Boolean) = b.call(SYSTEM, "enablePowerOnMusic", on)
 }

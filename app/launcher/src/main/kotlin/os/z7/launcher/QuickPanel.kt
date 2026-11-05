@@ -51,6 +51,8 @@ class QuickPanel(private val service: Context) {
             show()
             return
         }
+        // плотный слой обратно — меню XGIMI, открытое этим же нажатием, гаснет под ним
+        cover?.animate()?.alpha(1f)?.setStartDelay(0)?.setDuration(COVER_IN_MS)?.start()
         closeStockMenu()
         main.postDelayed({ hide() }, COVER_ON_CLOSE_MS)
     }
@@ -61,16 +63,15 @@ class QuickPanel(private val service: Context) {
         val context = UiLanguage.wrap(service)
         val width = Ui.dp(context, PANEL_WIDTH_DP)
 
-        val scrimView = View(context).apply { setBackgroundColor(context.getColor(R.color.scrim)) }
-        val content = build(context)
-        val panelView = FrameLayout(context).apply {
-            background = GradientDrawable().apply {
-                setColor(context.getColor(R.color.panel_bg))
-                val r = Ui.dp(context, 28).toFloat()
-                cornerRadii = floatArrayOf(0f, 0f, r, r, r, r, 0f, 0f)
-            }
-            addView(content)
+        // фон как у меню XGIMI: без плашки — тёмный слева, плавно уходит в прозрачность
+        val scrimView = View(context).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(SHADE_LEFT, SHADE_MID, SHADE_END))
         }
+        // плотный слой на первые ~0,4 с: под ним гаснет меню XGIMI, открытое этим же нажатием
+        val coverView = View(context).apply { setBackgroundColor(COVER_COLOR) }
+        // содержимое добавим следующим сообщением — окно с затемнением появляется сразу
+        val panelView = FrameLayout(context)
         val rootView = object : FrameLayout(context) {
             override fun dispatchKeyEvent(event: KeyEvent): Boolean {
                 if (closing) return true
@@ -82,7 +83,8 @@ class QuickPanel(private val service: Context) {
                 return super.dispatchKeyEvent(event)
             }
         }.apply {
-            addView(scrimView, FrameLayout.LayoutParams(MATCH, MATCH))
+            addView(scrimView, FrameLayout.LayoutParams(Ui.dp(context, SHADE_DP), MATCH, Gravity.START))
+            addView(coverView, FrameLayout.LayoutParams(width + Ui.dp(context, COVER_EXTRA_DP), MATCH, Gravity.START))
             addView(panelView, FrameLayout.LayoutParams(width, MATCH, Gravity.START))
         }
 
@@ -99,9 +101,16 @@ class QuickPanel(private val service: Context) {
         root = rootView
         panel = panelView
         scrim = scrimView
+        cover = coverView
         closing = false
         lp = params
         wm.addView(rootView, params)
+        main.post {
+            if (root !== rootView || closing) return@post
+            panelView.addView(build(context))
+            firstFocus?.requestFocus()
+        }
+        coverView.animate().alpha(0f).setStartDelay(COVER_MS).setDuration(COVER_FADE_MS).start()
 
         // анимацию запускаем, когда окно уже разложено: иначе первые кадры теряются и выезд «рвётся»
         rootView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
@@ -113,7 +122,6 @@ class QuickPanel(private val service: Context) {
                 return true
             }
         })
-        firstFocus?.requestFocus()
         closeStockMenu()
         restartAutoHide()
     }
@@ -133,6 +141,7 @@ class QuickPanel(private val service: Context) {
             .setInterpolator(AccelerateInterpolator(1.5f)).withLayer()
             .withEndAction { remove(rootView) }.start()
         scrim?.animate()?.alpha(0f)?.setDuration(CLOSE_MS)?.start()
+        cover?.animate()?.alpha(0f)?.setStartDelay(0)?.setDuration(CLOSE_MS)?.start()
     }
 
     /** Убрать окно сразу, без анимации (служба выключается). */
@@ -146,12 +155,14 @@ class QuickPanel(private val service: Context) {
         lp = null
         panel = null
         scrim = null
+        cover = null
         closing = false
         firstFocus = null
         try { wm.removeView(view) } catch (_: Exception) {}
     }
 
     private var firstFocus: View? = null
+    private var cover: View? = null
 
     private fun build(context: Context): View {
         val column = LinearLayout(context).apply {
@@ -276,5 +287,14 @@ class QuickPanel(private val service: Context) {
         const val OPEN_SHIFT_DP = 28
         const val OPEN_SHIFT_MS = 120L
         const val COVER_ON_CLOSE_MS = 350L
+        const val COVER_MS = 400L
+        const val COVER_FADE_MS = 250L
+        const val COVER_IN_MS = 60L
+        const val COVER_EXTRA_DP = 40
+        const val SHADE_DP = 760
+        const val COVER_COLOR = 0xF2040710.toInt()
+        const val SHADE_LEFT = 0xE6040710.toInt()
+        const val SHADE_MID = 0xA6040710.toInt()
+        const val SHADE_END = 0x00040710
     }
 }
