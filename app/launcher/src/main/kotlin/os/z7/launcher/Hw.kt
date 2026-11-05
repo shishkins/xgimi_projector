@@ -73,6 +73,13 @@ object Hw {
     /** Пункт картинки текущего режима: Brightness, Contrast, Saturation, Sharpness, ColorTemperature, MemcLevel, 3DNR. */
     fun setPictureItem(b: Gmpf.Bridge, item: String, value: Int) = b.call(TV, "set$item", source(b), value)
 
+    /**
+     * Режим «Свой» — единственный, где прошивка принимает ручные значения картинки: в «Умном» (AI)
+     * и других пресетах setContrast и т. п. отвечают true, но значение не меняется (проверено
+     * 2026-11-05). Поэтому в остальных режимах эти пункты в наших настройках погашены.
+     */
+    const val MODE_CUSTOM = 3
+
     fun resetPicture(b: Gmpf.Bridge) = b.call(TV, "resetPqSettings", source(b))
 
     // ---- проекция ----

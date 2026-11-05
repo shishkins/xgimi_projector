@@ -175,4 +175,5 @@
     <string name="game_off">Off</string>
     <string name="hdmi_game_on">Game mode — low latency</string>
     <string name="hdmi_game_off">Game mode off</string>
+    <string name="picture_custom_only">Manual picture settings work only in the Custom mode</string>
 </resources>

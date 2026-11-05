@@ -53,6 +53,13 @@ object Ui {
         isDuplicateParentStateEnabled = true
     }
 
+    /** Погасить строку: не выбирается пультом и полупрозрачна. */
+    fun setActive(view: View, active: Boolean) {
+        view.isFocusable = active
+        view.isClickable = active
+        view.animate().alpha(if (active) 1f else INACTIVE_ALPHA).setDuration(FOCUS_ANIM_MS).start()
+    }
+
     fun light(view: TextView) = view.apply { typeface = Typeface.create("sans-serif-light", Typeface.NORMAL) }
 
     /** Фокусируемая карточка с мягким увеличением в фокусе. */
@@ -373,6 +380,7 @@ object Ui {
         }
     }
 
+    const val INACTIVE_ALPHA = 0.35f
     const val FOCUS_SCALE = 1.05f
     const val ROW_FOCUS_SCALE = 1.02f
     const val FOCUS_ANIM_MS = 140L

@@ -139,11 +139,17 @@ class SettingsActivity : Activity() {
     /** Режим и параметры картинки — на текущем источнике (у HDMI свои). */
     private fun picture(c: LinearLayout) {
         lateinit var reload: () -> Unit
+        lateinit var applyMode: (Int?) -> Unit
         val mode = Ui.Choice(this, R.drawable.ic_picture, getString(R.string.picture_mode), options(Hw.PICTURE_MODES)) { m ->
+            applyMode(m)
             // у каждого режима свои значения — после смены перечитываем
             Gmpf.run(this, { Hw.setPictureMode(it, m) }) { reload() }
         }
         c.addView(mode, spaced())
+        val customHint = Ui.text(this, getString(R.string.picture_custom_only), 15f, secondary = true).apply {
+            setPadding(dp(20), 0, dp(20), dp(8))
+        }
+        c.addView(customHint, LinearLayout.LayoutParams(MATCH, WRAP))
 
         val lampWriter = Gmpf.Latest<Int>(this) { b, v -> b.setBrightness(v) }
         val lamp = Ui.Slider(this, R.drawable.ic_brightness, getString(R.string.quick_brightness), 1, Gmpf.BRIGHTNESS_MAX,
@@ -173,6 +179,15 @@ class SettingsActivity : Activity() {
         c.addView(colorTemp, spaced())
         c.addView(motion, spaced())
         c.addView(noise, spaced())
+
+        // ручные пункты работают только в режиме «Свой» — в остальных гасим их
+        val manual = listOf<View>(brightness, contrast, saturation, sharpness, colorTemp, motion, noise)
+        applyMode = { m ->
+            val custom = m == Hw.MODE_CUSTOM
+            manual.forEach { Ui.setActive(it, custom) }
+            customHint.visibility = if (custom || m == null) View.GONE else View.VISIBLE
+        }
+        applyMode(null)
         c.addView(row(R.drawable.ic_reset, R.string.picture_reset) {
             sheet.confirm(getString(R.string.picture_reset_title), null, listOf(
                 getString(R.string.cancel) to {},
@@ -188,6 +203,7 @@ class SettingsActivity : Activity() {
                 }
                 val p = values.first
                 mode.show(p.mode)
+                applyMode(p.mode)
                 lamp.set(values.second, notify = false)
                 brightness.set(p.brightness, notify = false)
                 contrast.set(p.contrast, notify = false)
