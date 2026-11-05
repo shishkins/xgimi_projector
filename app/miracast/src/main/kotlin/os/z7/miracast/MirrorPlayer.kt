@@ -6,27 +6,34 @@ import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.media.MediaCodec
 import android.media.MediaFormat
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.SystemClock
 import android.view.Surface
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import java.util.ArrayDeque
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 /**
  * Приём и воспроизведение потока WFD: RTP/UDP → MPEG-TS → H.264 (аппаратный декодер на Surface)
  * и AAC (MediaCodec → AudioTrack). Видео выводится по часам звука: кадр с PTS X показывается,
- * когда динамик играет звук с тем же PTS — так нет рассинхрона, как в нашем AirPlay.
+ * когда динамик играет звук с тем же PTS.
+ *
+ * Сжатые кадры не выбрасываются никогда: пропавший P-кадр портит картинку до следующего
+ * ключевого (красные пятна, остатки старых окон). Если очередь всё же переполнилась — ждём
+ * ключевой кадр и просим его у источника.
  */
 internal class MirrorPlayer(private val surface: Surface, private val listener: Listener) {
 
     interface Listener {
         fun onVideoSize(width: Int, height: Int)
         fun onFirstFrame()
-        /** Потеряны пакеты — стоит попросить ключевой кадр. */
-        fun onLoss()
+        /** Нужен ключевой кадр (потеря пакетов или сброс очереди). */
+        fun onNeedIdr()
     }
 
     @Volatile private var running = false
@@ -46,9 +53,9 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         s.receiveBufferSize = 4 * 1024 * 1024
         s.bind(InetSocketAddress(Wfd.RTP_PORT))
         socket = s
-        Thread({ receiveLoop(s) }, "wfd-rtp").apply { priority = Thread.MAX_PRIORITY }.start()
         video.start()
         audio.start()
+        Thread({ receiveLoop(s) }, "wfd-rtp").apply { priority = Thread.MAX_PRIORITY }.start()
     }
 
     fun stop() {
@@ -66,7 +73,6 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         var lost = 0L
         var bytes = 0L
         var lastReport = SystemClock.elapsedRealtime()
-        var lastLossReport = 0L
         while (running) {
             try {
                 s.receive(pkt)
@@ -86,8 +92,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
                 val gap = (seq - expected) and 0xFFFF
                 if (gap in 1..1000) {
                     lost += gap
-                    val now = SystemClock.elapsedRealtime()
-                    if (now - lastLossReport > 1000) { lastLossReport = now; listener.onLoss() }
+                    video.corrupted() // кадр с дырой испортит картинку — до ключевого не показываем
                 }
             }
             expected = (seq + 1) and 0xFFFF
@@ -96,20 +101,18 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             if (off < n) demux.feed(buf, off, n - off)
             val now = SystemClock.elapsedRealtime()
             if (now - lastReport >= 5000) {
-                L.i("rtp: %.1f Mbit/s, %d pkts, lost %d, video %d fps, late %d, audio %s".format(
-                    bytes * 8 / 1000.0 / (now - lastReport), packets, lost,
-                    video.takeFrames() * 1000 / (now - lastReport), video.takeLate(), audio.state()))
+                val dt = now - lastReport
+                L.i("rtp: %.1f Mbit/s, lost %d | video %s | audio %s".format(
+                    bytes * 8 / 1000.0 / dt, lost, video.report(dt), audio.report()))
                 packets = 0; lost = 0; bytes = 0; lastReport = now
             }
         }
     }
 
-    /**
-     * Общие часы: какой PTS звучит сейчас. Пока звука нет, — от первого кадра видео с запасом.
-     */
+    /** Общие часы: какой PTS звучит сейчас. Пока звука нет, — от первого кадра видео с запасом. */
     private inner class AvClock {
-        @Volatile var audioPtsUs = Long.MIN_VALUE
-        @Volatile var audioAtNs = 0L
+        @Volatile private var audioPtsUs = Long.MIN_VALUE
+        @Volatile private var audioAtNs = 0L
         private var basePts = Long.MIN_VALUE
         private var baseNs = 0L
 
@@ -118,11 +121,11 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         /** Когда показать кадр с [ptsUs] (System.nanoTime). */
         fun renderAt(ptsUs: Long): Long {
             val now = System.nanoTime()
-            if (audioPtsUs != Long.MIN_VALUE && now - audioAtNs < 1_000_000_000L) {
+            if (audioPtsUs != Long.MIN_VALUE && now - audioAtNs < 500_000_000L) {
                 return audioAtNs + (ptsUs - audioPtsUs) * 1000
             }
             val at = if (basePts == Long.MIN_VALUE) Long.MIN_VALUE else baseNs + (ptsUs - basePts) * 1000
-            if (at == Long.MIN_VALUE || at < now - 300_000_000L || at > now + 1_000_000_000L) {
+            if (at == Long.MIN_VALUE || at < now - 200_000_000L || at > now + 1_000_000_000L) {
                 basePts = ptsUs
                 baseNs = now + Tuning.videoOnlyLatencyMs * 1_000_000L
                 return baseNs
@@ -131,127 +134,164 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
         }
     }
 
-    /** H.264 → Surface. Декодер настраивается по первому кадру с SPS/PPS. */
+    /**
+     * H.264 → Surface в асинхронном режиме MediaCodec: свободный входной буфер берёт следующий
+     * кадр из очереди, готовый выходной — выводится к сроку по часам. Всё в одном потоке.
+     */
     private inner class VideoDecoder {
-        private val queue = LinkedBlockingQueue<Pair<ByteArray, Long>>(120)
+        private val thread = HandlerThread("wfd-video", android.os.Process.THREAD_PRIORITY_DISPLAY)
+        private lateinit var handler: Handler
         private var codec: MediaCodec? = null
-        private var thread: Thread? = null
-        @Volatile private var frames = 0L
-        @Volatile private var late = 0L
+        private val pending = ArrayDeque<Pair<ByteArray, Long>>()
+        private val freeInputs = ArrayDeque<Int>()
+        private var waitKey = true
         private var first = true
-
-        fun offer(au: ByteArray, ptsUs: Long) {
-            if (!queue.offer(au to ptsUs)) { queue.clear(); L.w("video: queue overflow, dropped") }
-        }
-
-        fun takeFrames(): Long = frames.also { frames = 0 }
-        fun takeLate(): Long = late.also { late = 0 }
+        // статистика за период отчёта
+        private var frames = 0
+        private var late = 0
+        private var leadSumMs = 0L
 
         fun start() {
-            thread = Thread({ loop() }, "wfd-video").apply { priority = Thread.MAX_PRIORITY - 1; start() }
+            thread.start()
+            handler = Handler(thread.looper)
         }
 
         fun stop() {
-            thread?.interrupt()
-            thread?.join(1000)
-            try { codec?.stop() } catch (_: Exception) {}
-            try { codec?.release() } catch (_: Exception) {}
-            codec = null
+            handler.post {
+                try { codec?.stop() } catch (_: Exception) {}
+                try { codec?.release() } catch (_: Exception) {}
+                codec = null
+            }
+            thread.quitSafely()
+            thread.join(1000)
         }
 
-        private fun loop() {
-            val info = MediaCodec.BufferInfo()
-            try {
-                while (running) {
-                    val item = queue.poll(5, TimeUnit.MILLISECONDS)
-                    if (item != null) feed(item.first, item.second)
-                    drain(info)
-                }
-            } catch (_: InterruptedException) {
-            } catch (e: Exception) {
-                L.w("video: ${e.javaClass.simpleName}: ${e.message}", e)
+        /** Из потока приёма: кадр готов. */
+        fun offer(au: ByteArray, ptsUs: Long) {
+            handler.post { enqueue(au, ptsUs) }
+        }
+
+        /** Потерян пакет: текущие кадры могут быть битыми — ждём ключевой. */
+        fun corrupted() {
+            handler.post {
+                if (!waitKey) { waitKey = true; L.w("video: packet loss, waiting for a key frame") }
+                listener.onNeedIdr()
             }
         }
 
-        private fun feed(au: ByteArray, ptsUs: Long) {
-            var c = codec
-            if (c == null) {
-                val (sps, pps) = H264.parameterSets(au) ?: return // ждём кадр с SPS/PPS (ключевой)
-                val size = H264.size(sps)
-                L.i("video: SPS ${size?.first}x${size?.second}, starting decoder")
-                val fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,
-                    size?.first ?: 1920, size?.second ?: 1080)
-                fmt.setByteBuffer("csd-0", ByteBuffer.wrap(sps))
-                fmt.setByteBuffer("csd-1", ByteBuffer.wrap(pps))
-                fmt.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 2 * 1024 * 1024)
-                fmt.setInteger(MediaFormat.KEY_PRIORITY, 0) // реальное время
-                c = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
-                L.i("video: decoder ${c.name}")
-                c.configure(fmt, surface, null, 0)
-                c.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT)
-                c.start()
-                codec = c
-            }
-            val idx = c.dequeueInputBuffer(20_000)
-            if (idx < 0) { L.w("video: no input buffer, frame dropped"); return }
-            val b = c.getInputBuffer(idx)!!
-            b.clear()
-            if (au.size > b.capacity()) { c.queueInputBuffer(idx, 0, 0, ptsUs, 0); return }
-            b.put(au)
-            c.queueInputBuffer(idx, 0, au.size, ptsUs, 0)
+        fun report(periodMs: Long): String {
+            val r = "${frames * 1000 / periodMs} fps, late $late, lead ${if (frames > 0) leadSumMs / frames else 0} ms, queue ${pending.size}"
+            frames = 0; late = 0; leadSumMs = 0
+            return r
         }
 
-        private fun drain(info: MediaCodec.BufferInfo) {
+        private fun enqueue(au: ByteArray, ptsUs: Long) {
+            if (waitKey) {
+                if (!H264.isKeyFrame(au)) return
+                waitKey = false
+                pending.clear()
+            }
+            if (codec == null && !open(au)) return
+            if (pending.size >= MAX_PENDING) {
+                // декодер не успевает: старые кадры уже не нужны, начинаем со свежего ключевого
+                L.w("video: decoder behind by ${pending.size} frames, skipping to a key frame")
+                pending.clear()
+                waitKey = true
+                listener.onNeedIdr()
+                return
+            }
+            pending.add(au to ptsUs)
+            pump()
+        }
+
+        private fun pump() {
             val c = codec ?: return
-            while (true) {
-                val idx = c.dequeueOutputBuffer(info, 0)
-                when {
-                    idx >= 0 -> {
-                        val at = clock.renderAt(info.presentationTimeUs)
-                        val now = System.nanoTime()
-                        if (at < now - 2_000_000L) {
-                            late++
-                            c.releaseOutputBuffer(idx, true) // опоздал — показать сразу, не копить
-                        } else {
-                            c.releaseOutputBuffer(idx, at)
-                        }
-                        frames++
-                        if (first) { first = false; listener.onFirstFrame() }
-                    }
-                    idx == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        val f = c.outputFormat
-                        val w = f.getInteger(MediaFormat.KEY_WIDTH)
-                        val h = f.getInteger(MediaFormat.KEY_HEIGHT)
-                        val cw = if (f.containsKey("crop-right")) f.getInteger("crop-right") - f.getInteger("crop-left") + 1 else w
-                        val ch = if (f.containsKey("crop-bottom")) f.getInteger("crop-bottom") - f.getInteger("crop-top") + 1 else h
-                        L.i("video: output ${cw}x$ch")
-                        listener.onVideoSize(cw, ch)
-                    }
-                    else -> return
-                }
+            while (pending.isNotEmpty() && freeInputs.isNotEmpty()) {
+                val idx = freeInputs.poll()!!
+                val (au, pts) = pending.poll()!!
+                val b = c.getInputBuffer(idx) ?: continue
+                b.clear()
+                if (au.size > b.capacity()) { L.w("video: frame ${au.size} B too big"); c.queueInputBuffer(idx, 0, 0, pts, 0); continue }
+                b.put(au)
+                c.queueInputBuffer(idx, 0, au.size, pts, 0)
             }
+        }
+
+        private fun open(au: ByteArray): Boolean {
+            val (sps, pps) = H264.parameterSets(au) ?: return false
+            val size = H264.size(sps)
+            L.i("video: SPS ${size?.first}x${size?.second}, starting decoder")
+            val fmt = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC,
+                size?.first ?: 1920, size?.second ?: 1080)
+            fmt.setByteBuffer("csd-0", ByteBuffer.wrap(sps))
+            fmt.setByteBuffer("csd-1", ByteBuffer.wrap(pps))
+            fmt.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 2 * 1024 * 1024)
+            fmt.setInteger(MediaFormat.KEY_PRIORITY, 0)
+            val c = MediaCodec.createDecoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
+            c.setCallback(object : MediaCodec.Callback() {
+                override fun onInputBufferAvailable(mc: MediaCodec, index: Int) {
+                    freeInputs.add(index); pump()
+                }
+                override fun onOutputBufferAvailable(mc: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+                    render(mc, index, info)
+                }
+                override fun onError(mc: MediaCodec, e: MediaCodec.CodecException) {
+                    L.w("video: codec error ${e.diagnosticInfo}", e)
+                }
+                override fun onOutputFormatChanged(mc: MediaCodec, f: MediaFormat) {
+                    val w = f.getInteger(MediaFormat.KEY_WIDTH)
+                    val h = f.getInteger(MediaFormat.KEY_HEIGHT)
+                    val cw = if (f.containsKey("crop-right")) f.getInteger("crop-right") - f.getInteger("crop-left") + 1 else w
+                    val ch = if (f.containsKey("crop-bottom")) f.getInteger("crop-bottom") - f.getInteger("crop-top") + 1 else h
+                    L.i("video: output ${cw}x$ch")
+                    listener.onVideoSize(cw, ch)
+                }
+            }, handler)
+            c.configure(fmt, surface, null, 0)
+            c.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT)
+            c.start()
+            L.i("video: decoder ${c.name}")
+            codec = c
+            return true
+        }
+
+        private fun render(c: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
+            val at = clock.renderAt(info.presentationTimeUs)
+            val now = System.nanoTime()
+            val leadMs = (at - now) / 1_000_000
+            frames++
+            leadSumMs += leadMs
+            if (at < now + 2_000_000L) {
+                late++
+                c.releaseOutputBuffer(index, true) // опоздал — показать сразу
+            } else {
+                c.releaseOutputBuffer(index, at)
+            }
+            if (first) { first = false; listener.onFirstFrame() }
         }
     }
 
     /**
-     * AAC (ADTS в PES) → PCM → AudioTrack. Дыры заполняются тишиной, наложения отбрасываются —
-     * поэтому номер сэмпла в AudioTrack линейно соответствует PTS, и по нему идут часы видео.
+     * AAC (ADTS в PES) → PCM → AudioTrack. Задержка звука держится около [Tuning.audioDelayMs]:
+     * если в AudioTrack накопилось больше — лишнее срезается (звук догоняет), если меньше —
+     * просто играет. Часы видео: какой PTS сейчас звучит (по AudioTrack.getTimestamp).
      */
     private inner class AudioPlayer {
-        private val queue = LinkedBlockingQueue<Pair<ByteArray, Long>>(400)
+        private val queue = LinkedBlockingQueue<Pair<ByteArray, Long>>(200)
         private var codec: MediaCodec? = null
         private var track: AudioTrack? = null
         private var thread: Thread? = null
         private var rate = 48000
         private var channels = 2
         private var framesWritten = 0L
-        /** PTS сэмпла номер [anchorFrame] в AudioTrack. */
-        private var anchorPts = Long.MIN_VALUE
-        private var anchorFrame = 0L
+        /** PTS конца последнего записанного куска: сэмпл номер framesWritten. */
+        private var endPts = Long.MIN_VALUE
         private val ts = AudioTimestamp()
         private var lastClock = 0L
+        private var trimmed = 0L
+        @Volatile private var pendingMs = 0L
 
-        fun state(): String = if (track == null) "off" else "${rate}Hz/${channels}ch"
+        fun report(): String = if (track == null) "off" else "buffer $pendingMs ms, trimmed ${trimmed.also { trimmed = 0 }} ms"
 
         fun offer(pes: ByteArray, ptsUs: Long) {
             if (!queue.offer(pes to ptsUs)) { queue.clear(); L.w("audio: queue overflow, dropped") }
@@ -276,7 +316,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             try {
                 while (running) {
                     val item = queue.poll(5, TimeUnit.MILLISECONDS)
-                    if (item != null) feed(item.first, item.second)
+                    if (item != null) feed(item.first, item.second, info)
                     drain(info)
                     updateClock()
                 }
@@ -286,7 +326,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             }
         }
 
-        private fun feed(pes: ByteArray, ptsUs: Long) {
+        private fun feed(pes: ByteArray, ptsUs: Long, info: MediaCodec.BufferInfo) {
             var p = 0
             var i = 0
             while (p + 7 <= pes.size) {
@@ -301,15 +341,14 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
                 if (len < hdr || p + len > pes.size) break
                 if (codec == null) open(profile, sfi, ch)
                 val c = codec ?: return
-                val frameRate = SAMPLE_RATES.getOrElse(sfi) { 48000 }
-                val pts = ptsUs + i * 1024L * 1_000_000 / frameRate
-                val idx = c.dequeueInputBuffer(10_000)
-                if (idx >= 0) {
-                    val b = c.getInputBuffer(idx)!!
-                    b.clear()
-                    b.put(pes, p + hdr, len - hdr)
-                    c.queueInputBuffer(idx, 0, len - hdr, pts, 0)
-                }
+                val pts = ptsUs + i * 1024L * 1_000_000 / rate
+                var idx = c.dequeueInputBuffer(0)
+                while (idx < 0 && running) { drain(info); idx = c.dequeueInputBuffer(2_000) }
+                if (idx < 0) return
+                val b = c.getInputBuffer(idx)!!
+                b.clear()
+                b.put(pes, p + hdr, len - hdr)
+                c.queueInputBuffer(idx, 0, len - hdr, pts, 0)
                 p += len
                 i++
             }
@@ -327,18 +366,20 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             codec = c
             val chMask = if (channels == 1) AudioFormat.CHANNEL_OUT_MONO else AudioFormat.CHANNEL_OUT_STEREO
             val min = AudioTrack.getMinBufferSize(rate, chMask, AudioFormat.ENCODING_PCM_16BIT)
+            // буфер с запасом под целевую задержку; задержку держим сами, срезая лишнее
+            val want = (rate * channels * 2 * (Tuning.audioDelayMs + 60) / 1000).toInt()
             val t = AudioTrack.Builder()
                 .setAudioAttributes(AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE).build())
                 .setAudioFormat(AudioFormat.Builder().setSampleRate(rate).setChannelMask(chMask)
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT).build())
-                .setBufferSizeInBytes(maxOf(min * 2, rate * channels * 2 / 10))
+                .setBufferSizeInBytes(maxOf(min, want))
                 .setTransferMode(AudioTrack.MODE_STREAM)
                 .build()
             t.play()
             track = t
-            L.i("audio: AAC ${rate}Hz ${channels}ch via ${c.name}, track buffer ${t.bufferSizeInFrames} frames")
+            L.i("audio: AAC ${rate}Hz ${channels}ch via ${c.name}, track buffer ${t.bufferSizeInFrames} frames, target ${Tuning.audioDelayMs} ms")
         }
 
         private fun drain(info: MediaCodec.BufferInfo) {
@@ -347,48 +388,36 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
             while (true) {
                 val idx = c.dequeueOutputBuffer(info, 0)
                 if (idx < 0) return
-                val b = c.getOutputBuffer(idx)!!
-                val bytesPerFrame = 2 * channels
-                val frames = info.size / bytesPerFrame
+                val frames = info.size / (2 * channels)
                 if (frames > 0) {
-                    if (anchorPts == Long.MIN_VALUE) {
-                        // запас, чтобы видео (декодер дольше) успевало к своему звуку
-                        val pre = rate.toLong() * Tuning.audioDelayMs / 1000
-                        writeSilence(t, pre)
-                        anchorPts = info.presentationTimeUs
-                        anchorFrame = framesWritten
+                    val queued = framesWritten - t.playbackHeadPosition.toLong()
+                    val queuedMs = queued * 1000 / rate
+                    pendingMs = queuedMs
+                    if (queuedMs > Tuning.audioDelayMs + 40) {
+                        trimmed += frames * 1000L / rate // звук отстал — этот кусок пропускаем
+                    } else {
+                        val b = c.getOutputBuffer(idx)!!
+                        val chunk = ByteArray(info.size)
+                        b.position(info.offset)
+                        b.get(chunk)
+                        t.write(chunk, 0, chunk.size)
+                        framesWritten += frames
+                        endPts = info.presentationTimeUs + frames * 1_000_000L / rate
                     }
-                    val expectedPts = anchorPts + (framesWritten - anchorFrame) * 1_000_000 / rate
-                    val drift = info.presentationTimeUs - expectedPts
-                    when {
-                        drift > 40_000 -> writeSilence(t, minOf(drift, 500_000) * rate / 1_000_000)
-                        drift < -40_000 -> { c.releaseOutputBuffer(idx, false); continue } // наложение
-                    }
-                    val chunk = ByteArray(info.size)
-                    b.position(info.offset)
-                    b.get(chunk)
-                    t.write(chunk, 0, chunk.size)
-                    framesWritten += frames
                 }
                 c.releaseOutputBuffer(idx, false)
             }
         }
 
-        private fun writeSilence(t: AudioTrack, frames: Long) {
-            if (frames <= 0) return
-            val zeros = ByteArray((frames * 2 * channels).toInt())
-            t.write(zeros, 0, zeros.size)
-            framesWritten += frames
-        }
-
         private fun updateClock() {
             val t = track ?: return
-            if (anchorPts == Long.MIN_VALUE) return
+            if (endPts == Long.MIN_VALUE) return
             val now = System.nanoTime()
-            if (now - lastClock < 20_000_000L) return
+            if (now - lastClock < 10_000_000L) return
             lastClock = now
             if (t.getTimestamp(ts)) {
-                val pts = anchorPts + (ts.framePosition - anchorFrame) * 1_000_000 / rate
+                // сэмпл ts.framePosition звучит в ts.nanoTime; его PTS — от конца записанного
+                val pts = endPts - (framesWritten - ts.framePosition) * 1_000_000 / rate
                 clock.setAudio(pts, ts.nanoTime)
             }
         }
@@ -396,96 +425,7 @@ internal class MirrorPlayer(private val surface: Surface, private val listener: 
 
     private companion object {
         val SAMPLE_RATES = intArrayOf(96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350)
+        /** Больше кадров в очереди — декодер явно не успевает. */
+        const val MAX_PENDING = 30
     }
-}
-
-/** Разбор H.264 Annex B: параметры потока для настройки декодера. */
-internal object H264 {
-    /** SPS и PPS (со стартовыми кодами) из кадра, если они там есть. */
-    fun parameterSets(au: ByteArray): Pair<ByteArray, ByteArray>? {
-        var sps: ByteArray? = null
-        var pps: ByteArray? = null
-        val starts = ArrayList<Int>()
-        var i = 0
-        while (i + 3 < au.size) {
-            if (au[i].toInt() == 0 && au[i + 1].toInt() == 0 && au[i + 2].toInt() == 1) { starts += i + 3; i += 3 } else i++
-        }
-        for ((k, s) in starts.withIndex()) {
-            var e = if (k + 1 < starts.size) starts[k + 1] - 3 else au.size
-            while (e > s && au[e - 1].toInt() == 0) e--
-            val type = au[s].toInt() and 0x1F
-            val nal = byteArrayOf(0, 0, 0, 1) + au.copyOfRange(s, e)
-            if (type == 7 && sps == null) sps = nal
-            if (type == 8 && pps == null) pps = nal
-        }
-        return if (sps != null && pps != null) sps to pps else null
-    }
-
-    /** Ширина и высота из SPS (с учётом обрезки), null — если не разобрать. */
-    fun size(spsWithStart: ByteArray): Pair<Int, Int>? = try {
-        val r = BitReader(unescape(spsWithStart.copyOfRange(5, spsWithStart.size)))
-        val profile = r.bits(8); r.bits(16); r.ue()
-        var chroma = 1
-        if (profile in intArrayOf(100, 110, 122, 244, 44, 83, 86, 118, 128, 138, 139, 134, 135)) {
-            chroma = r.ue(); if (chroma == 3) r.bits(1)
-            r.ue(); r.ue(); r.bits(1)
-            if (r.bits(1) == 1) for (n in 0 until if (chroma == 3) 12 else 8) if (r.bits(1) == 1) skipScaling(r, if (n < 6) 16 else 64)
-        }
-        r.ue()
-        when (r.ue()) {
-            0 -> r.ue()
-            1 -> { r.bits(1); r.se(); r.se(); repeat(r.ue()) { r.se() } }
-        }
-        r.ue(); r.bits(1)
-        val wMbs = r.ue() + 1
-        val hMapUnits = r.ue() + 1
-        val frameMbsOnly = r.bits(1)
-        if (frameMbsOnly == 0) r.bits(1)
-        r.bits(1)
-        var w = wMbs * 16
-        var h = (2 - frameMbsOnly) * hMapUnits * 16
-        if (r.bits(1) == 1) {
-            val cl = r.ue(); val cr = r.ue(); val ct = r.ue(); val cb = r.ue()
-            val cx = if (chroma == 0) 1 else 2
-            val cy = (if (chroma == 1) 2 else 1) * (2 - frameMbsOnly)
-            w -= (cl + cr) * cx; h -= (ct + cb) * cy
-        }
-        w to h
-    } catch (_: Exception) { null }
-
-    private fun skipScaling(r: BitReader, n: Int) {
-        var last = 8; var next = 8
-        for (j in 0 until n) { if (next != 0) next = (last + r.se() + 256) % 256; if (next != 0) last = next }
-    }
-
-    private fun unescape(b: ByteArray): ByteArray {
-        val out = java.io.ByteArrayOutputStream(b.size)
-        var zeros = 0
-        for (x in b) {
-            if (zeros >= 2 && x.toInt() == 3) { zeros = 0; continue }
-            out.write(x.toInt())
-            zeros = if (x.toInt() == 0) zeros + 1 else 0
-        }
-        return out.toByteArray()
-    }
-
-    private class BitReader(private val b: ByteArray) {
-        private var pos = 0
-        fun bits(n: Int): Int { var v = 0; repeat(n) { v = (v shl 1) or ((b[pos shr 3].toInt() shr (7 - (pos and 7))) and 1); pos++ }; return v }
-        fun ue(): Int { var z = 0; while (bits(1) == 0) z++; return (1 shl z) - 1 + if (z > 0) bits(z) else 0 }
-        fun se(): Int { val v = ue(); return if (v and 1 == 1) (v + 1) / 2 else -(v / 2) }
-    }
-}
-
-/** Настройки задержки — свойствами, чтобы подбирать на проекторе без пересборки. */
-internal object Tuning {
-    /** Запас звука перед первым сэмплом: видео декодируется дольше и должно успевать к звуку. */
-    val audioDelayMs: Long get() = prop("persist.z7.mc.audio_delay_ms", 60)
-    /** Задержка показа, пока звука нет. */
-    val videoOnlyLatencyMs: Long get() = prop("persist.z7.mc.video_latency_ms", 50)
-
-    private fun prop(name: String, def: Long): Long = try {
-        (Class.forName("android.os.SystemProperties").getMethod("get", String::class.java, String::class.java)
-            .invoke(null, name, "") as String).toLongOrNull() ?: def
-    } catch (_: Exception) { def }
 }

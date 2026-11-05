@@ -121,7 +121,7 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
         main.post { hideWaiting() }
     }
 
-    override fun onLoss() {
+    override fun onNeedIdr() {
         val now = SystemClock.elapsedRealtime()
         if (now - lastIdr < 1000) return
         lastIdr = now
