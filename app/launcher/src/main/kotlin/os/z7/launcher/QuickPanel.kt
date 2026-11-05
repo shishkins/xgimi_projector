@@ -48,7 +48,13 @@ class QuickPanel(private val service: Context) {
     fun toggle() = if (isShown) hide() else show()
 
     fun show() {
-        if (root != null) return
+        // застрявшее закрытие (анимацию отменили — конец не наступил): убрать окно и открыть заново
+        root?.let { stuck ->
+            if (!closing) return
+            KeyLog.w("panel: previous close never finished — removing")
+            remove(stuck)
+        }
+        KeyLog.w("panel: show")
         // язык интерфейса мог смениться в настройках — каждый раз свежий контекст
         val context = UiLanguage.wrap(service)
 
@@ -99,6 +105,7 @@ class QuickPanel(private val service: Context) {
         rootView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
                 rootView.viewTreeObserver.removeOnPreDrawListener(this)
+                if (closing) return true // закрыли раньше, чем панель успела выехать
                 panelView.translationY = panelView.height.toFloat()
                 panelView.visibility = View.VISIBLE
                 panelView.animate().translationY(0f).setDuration(OPEN_MS)
@@ -116,6 +123,9 @@ class QuickPanel(private val service: Context) {
         val rootView = root ?: return
         if (closing) return
         closing = true
+        KeyLog.w("panel: hide")
+        // окно убираем в любом случае, даже если анимацию отменят
+        main.postDelayed({ remove(rootView) }, CLOSE_MS + REMOVE_GRACE_MS)
         main.removeCallbacks(autoHide)
         // пока панель уезжает, клавиши уже идут приложению под ней
         lp?.let {
@@ -331,6 +341,7 @@ class QuickPanel(private val service: Context) {
         const val SCRIM_DP = 520
         const val OPEN_MS = 280L
         const val CLOSE_MS = 200L
+        const val REMOVE_GRACE_MS = 150L
         const val AUTO_HIDE_MS = 30_000L
         val STOCK_RECHECK_MS = longArrayOf(300L, 700L, 1_200L, 2_000L)
     }
