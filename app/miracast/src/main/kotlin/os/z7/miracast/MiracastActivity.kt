@@ -98,6 +98,11 @@ class MiracastActivity : Activity(), P2pLink.Listener, RtspSink.Listener, Mirror
         stopSession("activity stopped")
         p2p.stop()
         try { unregisterReceiver(wifiWatch) } catch (_: Exception) {}
+        // ушли с экрана (не пересоздание из-за языка) — агент сразу возвращает домашнюю Wi-Fi
+        if (!isChangingConfigurations) {
+            sendBroadcast(android.content.Intent().setComponent(
+                android.content.ComponentName("os.z7.agent", "os.z7.agent.OwnMiracast\$EndedReceiver")))
+        }
         super.onStop()
     }
 

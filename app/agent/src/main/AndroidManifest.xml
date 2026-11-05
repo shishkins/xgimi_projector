@@ -84,5 +84,11 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- наш приёмник Miracast закрылся: вернуть домашнюю Wi-Fi (только наши приложения) -->
+        <receiver
+            android:name=".OwnMiracast$EndedReceiver"
+            android:exported="true"
+            android:permission="os.z7.permission.CONTROL" />
     </application>
 </manifest>

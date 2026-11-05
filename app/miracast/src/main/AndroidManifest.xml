@@ -8,6 +8,8 @@
     <!-- Wi-Fi Direct (поиск, сведения о группе) на Android 9 требует геолокацию; выдаёт агент (pm grant) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- сигнал агенту «приёмник закрылся» (подпись та же — выдаётся автоматически) -->
+    <uses-permission android:name="os.z7.permission.CONTROL" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

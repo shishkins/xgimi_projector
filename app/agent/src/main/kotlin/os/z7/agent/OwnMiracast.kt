@@ -64,11 +64,36 @@ object OwnMiracast {
         val resumed = adb.run("dumpsys activity activities | grep mResumedActivity").orEmpty()
         if (resumed.contains(Config.OWN_MIRACAST_PKG)) { closedTicks = 0; return }
         if (++closedTicks < 2) return // одного раза мало: между окнами mResumedActivity бывает пустым
-        Logf.w("miracast: receiver closed — restoring home Wi-Fi")
+        endSession(context, adb, "receiver gone")
+    }
+
+    /** Вернуть домашнюю Wi-Fi: приёмник закрылся (его сигнал [EndedReceiver] или сторож). */
+    @Synchronized
+    fun endSession(context: Context, adb: AdbBridge, why: String) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(KEY_ACTIVE, false)) return
+        Logf.w("miracast: session over ($why) — restoring home Wi-Fi")
         adb.run("service call wifi ${Config.WIFI_TX_ENABLE_CONNECTIVITY_MANAGER} i32 1")
         enableSavedNetworks(adb)
         prefs.edit().putBoolean(KEY_ACTIVE, false).apply()
         closedTicks = 0
+    }
+
+    /** Приёмник сообщает, что закрылся, — сеть возвращаем сразу, не дожидаясь сторожа. */
+    class EndedReceiver : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val app = context.applicationContext
+            val pending = goAsync()
+            Thread {
+                val adb = AdbBridge(app.filesDir)
+                try {
+                    endSession(app, adb, "receiver closed")
+                } finally {
+                    adb.close()
+                    pending.finish()
+                }
+            }.start()
+        }
     }
 
     /** Атрибуты WFD, если их нет: поднять сток, дождаться, закрыть. */
