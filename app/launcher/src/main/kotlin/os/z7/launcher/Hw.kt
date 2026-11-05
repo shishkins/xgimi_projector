@@ -126,6 +126,11 @@ object Hw {
     fun hdmiConnected(b: Gmpf.Bridge) =
         b.bool(TV, "getHdmiConnectStatus", 0) || b.bool(TV, "getHdmiConnectStatus", 1)
 
+    /** Есть ли картинка на входе HDMI — так же решает стоковый плеер (статус 3 = сигнал стабилен). */
+    fun hdmiSignal(b: Gmpf.Bridge) = b.int(TV, "getSignalStatus") == SIGNAL_STABLE
+
+    private const val SIGNAL_STABLE = 3
+
     fun bootSound(b: Gmpf.Bridge) = b.bool(SYSTEM, "isPowerOnMusicEnabled")
     fun setBootSound(b: Gmpf.Bridge, on: Boolean) = b.call(SYSTEM, "enablePowerOnMusic", on)
 }

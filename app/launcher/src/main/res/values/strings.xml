@@ -168,4 +168,5 @@
     <string name="focus_on_move_hint">Refocuses after the projector is moved or tilted</string>
     <string name="focus_on_start">Auto focus at start-up</string>
     <string name="boot_sound">Start-up sound</string>
+    <string name="quick_hint">OK on a slider — adjust with ◀ ▶</string>
 </resources>

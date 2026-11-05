@@ -39,8 +39,10 @@ class HdmiActivity : Activity() {
     private lateinit var waitingTitle: TextView
     private lateinit var info: TextView
     private var inputId: String? = null
+    /** Сигнал по мнению прошивки (как у стока: getSignalStatus == 3). События TvView здесь врут. */
     private var hasVideo = false
     private var retries = 0
+    private var started = false
     private var focusRequest: AudioFocusRequest? = null
 
     private val retune = Runnable {
@@ -50,6 +52,17 @@ class HdmiActivity : Activity() {
         }
     }
     private val hideInfo = Runnable { info.animate().alpha(0f).setDuration(400).start() }
+
+    /** Опрос сигнала раз в секунду, как делает стоковый плеер. */
+    private val pollSignal = object : Runnable {
+        override fun run() {
+            Gmpf.run(this@HdmiActivity, { Hw.hdmiSignal(it) }) { signal ->
+                if (!started) return@run
+                if (signal != null) onSignal(signal)
+                main.postDelayed(this, SIGNAL_POLL_MS)
+            }
+        }
+    }
 
     override fun attachBaseContext(newBase: Context) = super.attachBaseContext(UiLanguage.wrap(newBase))
 
@@ -91,18 +104,6 @@ class HdmiActivity : Activity() {
         setContentView(root)
 
         tv.setCallback(object : TvView.TvInputCallback() {
-            override fun onVideoAvailable(id: String) {
-                hasVideo = true
-                main.removeCallbacks(retune)
-                waiting.animate().alpha(0f).setDuration(250).start()
-                showInfo()
-            }
-
-            override fun onVideoUnavailable(id: String, reason: Int) {
-                hasVideo = false
-                waiting.animate().alpha(1f).setDuration(250).start()
-            }
-
             override fun onConnectionFailed(id: String) = scheduleRetune()
             override fun onDisconnected(id: String) = scheduleRetune()
         })
@@ -112,6 +113,7 @@ class HdmiActivity : Activity() {
         super.onStart()
         hasVideo = false
         retries = 0
+        started = true
         waiting.alpha = 1f
         inputId = findInput(this)
         if (inputId == null) {
@@ -122,9 +124,21 @@ class HdmiActivity : Activity() {
         // открылись вместо стокового плеера — даём ему отпустить вход
         val delay = if (intent.getBooleanExtra(EXTRA_REPLACING_STOCK, false)) STOCK_RELEASE_MS else 0L
         main.postDelayed({ tune() }, delay)
+        main.postDelayed(pollSignal, delay + SIGNAL_POLL_MS)
+    }
+
+    private fun onSignal(signal: Boolean) {
+        if (signal == hasVideo) return
+        hasVideo = signal
+        waiting.animate().alpha(if (signal) 0f else 1f).setDuration(250).start()
+        if (signal) {
+            main.removeCallbacks(retune)
+            showInfo()
+        }
     }
 
     override fun onStop() {
+        started = false
         main.removeCallbacksAndMessages(null)
         tv.reset()
         hasVideo = false
@@ -190,6 +204,7 @@ class HdmiActivity : Activity() {
         private const val RETUNE_MS = 3_000L
         private const val MAX_RETRIES = 3
         private const val INFO_MS = 4_000L
+        private const val SIGNAL_POLL_MS = 1_000L
 
         /** Первый вход HDMI (без дочерних входов HDMI-CEC). */
         fun findInput(context: Context): String? = try {

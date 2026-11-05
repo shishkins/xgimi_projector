@@ -263,12 +263,18 @@ object Ui {
         private val format: (Int) -> String,
         private val write: (Int) -> Unit,
         private val step: Int = 1,
+        /**
+         * Ползунки в ряд (центр управления): стрелки двигают фокус, а значение меняется только
+         * после OK — режим регулировки; OK, вверх или вниз из него выходят.
+         */
+        private val engageOnClick: Boolean = false,
     ) : LinearLayout(context) {
 
         private val valueView = cardText(context, "", 15f, secondary = true)
         private val bar = LevelBar(context)
         var value = min
             private set
+        private var engaged = false
 
         init {
             orientation = HORIZONTAL
@@ -285,16 +291,37 @@ object Ui {
             })
             addView(column, LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             focusable(this, ROW_FOCUS_SCALE)
+            if (engageOnClick) {
+                setOnClickListener { engage(!engaged) }
+                setOnFocusChangeListener { v, focused ->
+                    onFocus(v, focused, ROW_FOCUS_SCALE)
+                    if (!focused) engage(false)
+                }
+            }
             setOnKeyListener { _, keyCode, event ->
+                if (engageOnClick && !engaged) return@setOnKeyListener false
                 val delta = when (keyCode) {
                     KeyEvent.KEYCODE_DPAD_LEFT -> -step
                     KeyEvent.KEYCODE_DPAD_RIGHT -> step
+                    KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> {
+                        engage(false)
+                        return@setOnKeyListener false
+                    }
                     else -> return@setOnKeyListener false
                 }
                 if (event.action == KeyEvent.ACTION_DOWN) set(value + delta, notify = true)
                 true
             }
         }
+
+        private fun engage(on: Boolean) {
+            if (engaged == on) return
+            engaged = on
+            bar.engaged = on
+            valueView.text = label(value)
+        }
+
+        private fun label(v: Int) = if (engaged) "‹  ${format(v)}  ›" else format(v)
 
         fun setRange(min: Int, max: Int) {
             this.min = min
@@ -306,7 +333,7 @@ object Ui {
             val clamped = v.coerceIn(min, max)
             if (notify && clamped == value) return
             value = clamped
-            valueView.text = format(clamped)
+            valueView.text = label(clamped)
             bar.level = (clamped - min).toFloat() / (max - min)
             if (notify) write(clamped)
         }
@@ -323,6 +350,10 @@ object Ui {
         var level = 0f
             set(v) { field = v.coerceIn(0f, 1f); invalidate() }
 
+        /** Режим регулировки: полоса толще. */
+        var engaged = false
+            set(v) { field = v; invalidate() }
+
         override fun drawableStateChanged() {
             super.drawableStateChanged()
             invalidate()
@@ -331,10 +362,13 @@ object Ui {
         override fun onDraw(canvas: Canvas) {
             val focused = drawableState.contains(android.R.attr.state_focused)
             track.color = context.getColor(if (focused) R.color.bar_track_focused else R.color.bar_track)
-            val r = height / 2f
-            rect.set(0f, 0f, width.toFloat(), height.toFloat())
+            // в покое полоса вдвое тоньше выделенного ей места, в режиме регулировки — во всю высоту
+            val h = if (engaged) height.toFloat() else height / 2f
+            val top = (height - h) / 2f
+            val r = h / 2f
+            rect.set(0f, top, width.toFloat(), top + h)
             canvas.drawRoundRect(rect, r, r, track)
-            rect.right = maxOf(height.toFloat(), width * level)
+            rect.right = maxOf(h, width * level)
             canvas.drawRoundRect(rect, r, r, fill)
         }
     }

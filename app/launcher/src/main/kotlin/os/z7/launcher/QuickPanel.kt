@@ -156,6 +156,8 @@ class QuickPanel(private val service: Context) {
         val header = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
         header.addView(Ui.text(context, context.getString(R.string.quick_title), 22f),
             LinearLayout.LayoutParams(0, WRAP, 1f))
+        header.addView(Ui.text(context, context.getString(R.string.quick_hint), 15f, secondary = true),
+            LinearLayout.LayoutParams(WRAP, WRAP).apply { marginEnd = dp(context, 28) })
         header.addView(Ui.light(Ui.text(context, SimpleDateFormat("HH:mm", UiLanguage.locale(context)).format(Date()), 22f)))
         column.addView(header)
 
@@ -163,12 +165,13 @@ class QuickPanel(private val service: Context) {
         val maxVolume = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         val volume = Ui.Slider(context, R.drawable.ic_volume, context.getString(R.string.quick_volume), 0, maxVolume,
             format = { "${it * 100 / maxVolume}%" },
-            write = { audio.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) })
+            write = { audio.setStreamVolume(AudioManager.STREAM_MUSIC, it, 0) }, engageOnClick = true)
         volume.set(audio.getStreamVolume(AudioManager.STREAM_MUSIC), notify = false)
 
         val brightnessWriter = Gmpf.Latest<Int>(service) { b, v -> b.setBrightness(v) }
         val brightness = Ui.Slider(context, R.drawable.ic_brightness, context.getString(R.string.quick_brightness),
-            1, Gmpf.BRIGHTNESS_MAX, format = { "$it / ${Gmpf.BRIGHTNESS_MAX}" }, write = brightnessWriter::submit)
+            1, Gmpf.BRIGHTNESS_MAX, format = { "$it / ${Gmpf.BRIGHTNESS_MAX}" }, write = brightnessWriter::submit,
+            engageOnClick = true)
         brightness.set(Gmpf.BRIGHTNESS_MAX, notify = false)
 
         // размер изображения: вправо — больше; у прошивки наоборот (шаг 0 — полный размер)
@@ -176,7 +179,7 @@ class QuickPanel(private val service: Context) {
         val zoomWriter = Gmpf.Latest<Int>(service) { b, v -> b.setZoom(v) }
         val size = Ui.Slider(context, R.drawable.ic_zoom, context.getString(R.string.quick_size), 0, zoomMax,
             format = { if (it == zoomMax) context.getString(R.string.size_full) else "−${zoomMax - it}" },
-            write = { zoomWriter.submit(zoomMax - it) })
+            write = { zoomWriter.submit(zoomMax - it) }, engageOnClick = true)
         size.set(zoomMax, notify = false)
 
         val sliders = LinearLayout(context).apply { clipChildren = false }

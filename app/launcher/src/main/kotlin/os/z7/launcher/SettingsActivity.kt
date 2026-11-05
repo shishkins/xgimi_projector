@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -26,6 +27,7 @@ class SettingsActivity : Activity() {
     private lateinit var sheet: Sheet
     private val factory by lazy { FactoryReset(this) }
     private var shown = -1
+    private val menuRows = mutableListOf<View>()
 
     private val sections by lazy {
         listOf(
@@ -56,7 +58,14 @@ class SettingsActivity : Activity() {
                 Ui.onFocus(v, focused, Ui.ROW_FOCUS_SCALE)
                 if (focused) showSection(i)
             }
-            row.setOnClickListener { contentScroll.requestFocus(View.FOCUS_RIGHT) }
+            // вправо и OK — на первую строку раздела, а не на ближайшую по высоте
+            row.setOnClickListener { focusContent() }
+            row.setOnKeyListener { _, code, e ->
+                if (code != KeyEvent.KEYCODE_DPAD_RIGHT) return@setOnKeyListener false
+                if (e.action == KeyEvent.ACTION_DOWN) focusContent()
+                true
+            }
+            menuRows += row
             menu.addView(row, LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(6) })
         }
         root.addView(menu, LinearLayout.LayoutParams(dp(MENU_DP), MATCH).apply { marginEnd = dp(48) })
@@ -84,6 +93,20 @@ class SettingsActivity : Activity() {
         content.removeAllViews()
         sections[shown].build(content)
         focused?.let { content.getChildAt(minOf(it, content.childCount - 1))?.requestFocus() }
+    }
+
+    /** «Назад» внутри раздела — к списку разделов (ползунки забирают «влево»), из списка — выход. */
+    override fun onBackPressed() {
+        when {
+            sheet.isShown -> sheet.dismiss()
+            content.hasFocus() && shown >= 0 -> menuRows[shown].requestFocus()
+            else -> super.onBackPressed()
+        }
+    }
+
+    private fun focusContent() {
+        contentScroll.scrollTo(0, 0)
+        (0 until content.childCount).map { content.getChildAt(it) }.firstOrNull { it.isFocusable }?.requestFocus()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

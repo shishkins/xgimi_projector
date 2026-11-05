@@ -219,7 +219,10 @@ class HomeActivity : Activity() {
         // крупное название и кнопки
         title = Ui.light(Ui.text(this, "", 52f))
         subtitle = Ui.text(this, "", 19f, secondary = true).apply {
+            // всегда две строки: кнопки под подписью не прыгают между плитками
+            minLines = 2
             maxLines = 2
+            setLineSpacing(dp(4).toFloat(), 1f)
             ellipsize = TextUtils.TruncateAt.END
         }
         openButton = TextView(this).apply {

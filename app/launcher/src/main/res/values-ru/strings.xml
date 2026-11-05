@@ -166,4 +166,5 @@
     <string name="focus_on_move_hint">Наводит резкость, когда проектор сдвинули или наклонили</string>
     <string name="focus_on_start">Автофокус при включении</string>
     <string name="boot_sound">Звук при включении</string>
+    <string name="quick_hint">OK на ползунке — менять стрелками ◀ ▶</string>
 </resources>
