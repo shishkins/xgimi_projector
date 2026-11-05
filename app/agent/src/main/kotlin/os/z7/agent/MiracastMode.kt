@@ -111,6 +111,7 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         }
         adb.run("am force-stop ${Config.STOCK_CAST_PKG}")
         adb.run("pm disable-user --user 0 ${Config.STOCK_CAST_PKG}")
+        enableSavedNetworks()
         prefs.edit().clear().apply()
         lostSince = 0L
     }
@@ -128,6 +129,21 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         val r = adb.run("service call wifi ${Config.WIFI_TX_ENABLE_NETWORK} i32 $id i32 0 s16 com.android.shell")
         adb.run("service call wifi ${Config.WIFI_TX_RECONNECT} s16 com.android.shell")
         Logf.w("miracast: home Wi-Fi re-enabled (id=$id): ${r?.trim()}")
+    }
+
+    /**
+     * Включить все сохранённые сети, которые сток оставил выключенными. Сток включает их в
+     * onDestroy, только если проектор в этот момент не подключён ни к какой сети; иначе
+     * (домашнюю уже вернули) остальные так и остаются «DISABLED_BY_WIFI_MANAGER».
+     */
+    private fun enableSavedNetworks() {
+        val list = adb.run("dumpsys wifi | grep -E '^ *- DSBLE ID: [0-9]+ SSID'").orEmpty()
+        val ids = DISABLED_ID.findAll(list).mapNotNull { it.groupValues[1].toIntOrNull() }.toList()
+        if (ids.isEmpty()) return
+        for (id in ids) {
+            adb.run("service call wifi ${Config.WIFI_TX_ENABLE_NETWORK} i32 $id i32 0 s16 com.android.shell")
+        }
+        Logf.w("miracast: re-enabled saved networks $ids")
     }
 
     /** id сети, к которой проектор подключён сейчас (-1, если ни к какой). */
@@ -158,5 +174,6 @@ class MiracastMode(context: Context, private val adb: AdbBridge) {
         private const val KEY_CONNECTED = "connected"
         private const val KEY_HOME_NET_ID = "home_net_id"
         private val NET_ID = Regex("Net ID: (-?\\d+)")
+        private val DISABLED_ID = Regex("DSBLE ID: (\\d+) SSID")
     }
 }
