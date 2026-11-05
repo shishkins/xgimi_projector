@@ -41,7 +41,19 @@ class QuickPanel(private val service: Context) {
 
     val isShown: Boolean get() = root != null && !closing
 
-    fun toggle() = if (isShown) hide() else show()
+    /**
+     * Кнопка «настройки» (долгое нажатие). Быстрое меню XGIMI прошивка открывает на это же нажатие
+     * раньше нашей службы (~140 мс), его гасит только CLOSE_SYSTEM_DIALOGS. Поэтому при закрытии
+     * наша панель ещё немного стоит на месте — меню XGIMI гаснет под ней, а не после неё.
+     */
+    fun toggle() {
+        if (!isShown) {
+            show()
+            return
+        }
+        closeStockMenu()
+        main.postDelayed({ hide() }, COVER_ON_CLOSE_MS)
+    }
 
     fun show() {
         if (root != null) return
@@ -81,7 +93,8 @@ class QuickPanel(private val service: Context) {
             PixelFormat.TRANSLUCENT,
         ).apply { windowAnimations = 0 }
 
-        panelView.translationX = -width.toFloat()
+        // почти без выезда: к появлению меню XGIMI (~140 мс) его место уже закрыто нашей панелью
+        panelView.translationX = -Ui.dp(context, OPEN_SHIFT_DP).toFloat()
         scrimView.alpha = 0f
         root = rootView
         panel = panelView
@@ -94,7 +107,7 @@ class QuickPanel(private val service: Context) {
         rootView.viewTreeObserver.addOnPreDrawListener(object : ViewTreeObserver.OnPreDrawListener {
             override fun onPreDraw(): Boolean {
                 rootView.viewTreeObserver.removeOnPreDrawListener(this)
-                panelView.animate().translationX(0f).setDuration(OPEN_MS)
+                panelView.animate().translationX(0f).setDuration(OPEN_SHIFT_MS)
                     .setInterpolator(DecelerateInterpolator(2f)).withLayer().start()
                 scrimView.animate().alpha(1f).setDuration(OPEN_MS).start()
                 return true
@@ -247,7 +260,7 @@ class QuickPanel(private val service: Context) {
     private fun closeStockMenu() {
         val send = { service.sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS).putExtra("reason", service.packageName)) }
         send()
-        main.postDelayed({ if (isShown) send() }, STOCK_RECHECK_MS)
+        for (delay in STOCK_RECHECK_MS) main.postDelayed({ send() }, delay)
     }
 
     private companion object {
@@ -259,6 +272,9 @@ class QuickPanel(private val service: Context) {
         const val OPEN_MS = 260L
         const val CLOSE_MS = 200L
         const val AUTO_HIDE_MS = 30_000L
-        const val STOCK_RECHECK_MS = 700L
+        val STOCK_RECHECK_MS = longArrayOf(150L, 300L, 700L)
+        const val OPEN_SHIFT_DP = 28
+        const val OPEN_SHIFT_MS = 120L
+        const val COVER_ON_CLOSE_MS = 350L
     }
 }

@@ -1,6 +1,7 @@
 package os.z7.launcher
 
 import android.accessibilityservice.AccessibilityService
+import android.content.Intent
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -68,6 +69,7 @@ class KeyService : AccessibilityService() {
         val cls = event.className?.toString()
         onMiracastWindow(event, cls)
         onStockHdmi(event)
+        onStockMenu(event, cls)
         when {
             fromSystemUi && cls == AK_DIALOG_CLASS && event.isFullScreen -> cover.show(AkCover.Mode.RUNNING)
             fromSystemUi && cls == AK_DONE_CLASS && cover.mode == AkCover.Mode.RUNNING -> cover.show(AkCover.Mode.DONE)
@@ -106,6 +108,15 @@ class KeyService : AccessibilityService() {
 
     private var lastHdmiRedirect = 0L
 
+    /**
+     * Окно быстрого меню XGIMI (com.android.newsettings) появилось — гасим сразу. Стоковые экраны
+     * настроек мы сами не открываем; запасной HOME стока не трогаем.
+     */
+    private fun onStockMenu(event: AccessibilityEvent, cls: String?) {
+        if (event.packageName != STOCK_SETTINGS_PKG || cls?.contains("FallbackHome") == true) return
+        sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS).putExtra("reason", packageName))
+    }
+
     override fun onInterrupt() {}
 
     override fun onDestroy() {
@@ -131,6 +142,7 @@ class KeyService : AccessibilityService() {
 
         /** Стоковый плеер входа HDMI. */
         private const val STOCK_HDMI_PKG = "com.xgimi.xhplayer"
+        private const val STOCK_SETTINGS_PKG = "com.android.newsettings"
         private const val HDMI_REDIRECT_PAUSE_MS = 3_000L
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
