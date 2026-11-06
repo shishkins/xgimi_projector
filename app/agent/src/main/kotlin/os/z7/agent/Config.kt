@@ -130,7 +130,10 @@ object Config {
     /** Сколько ждать после обновления лаунчера, прежде чем переподключать службу кнопок. */
     const val KEYS_REBIND_AFTER_UPDATE_MS = 10_000L
 
-    /** Стоковые настройки XGIMI: в них FallbackHome, без которого система не догружается. Не выключать. */
+    /** Свой загрузочный HOME лаунчера (вместо FallbackHome стока); пока его нет — стоковые настройки не выключать. */
+    const val BOOT_HOME_CLASS = "os.z7.launcher.BootHomeActivity"
+
+    /** Стоковые настройки XGIMI: быстрое меню и FallbackHome (нужен для загрузки, если нет своего). */
     const val STOCK_SETTINGS_PKG = "com.android.newsettings"
 
     /** Группа вне сеанса: подождать, вдруг это начало нашего сеанса (подготовка ещё пишет флаг). */

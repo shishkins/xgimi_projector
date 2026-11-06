@@ -108,7 +108,7 @@ class AgentService : Service() {
             SystemLocale(this@AgentService, adb).ensureSupported()
             ensureWifiAccess()
             retireLegacyReceiver()
-            ensureStockSettingsOn()
+            syncStockSettings()
             var lastBeat = 0L
             var lastKeysCheck = SystemClock.elapsedRealtime()
             while (isActive) {
@@ -210,15 +210,22 @@ class AgentService : Service() {
     }
 
     /**
-     * Стоковые настройки XGIMI (com.android.newsettings) выключать НЕЛЬЗЯ: в них FallbackHome —
-     * единственный домашний экран с directBootAware. Без него при загрузке пользователь остаётся
-     * в BOOTING, sys.boot_completed не наступает, экран чёрный (2026-11-06, agent 0.3.14–0.3.16
-     * выключал их ради быстрого меню). Поэтому, наоборот, включаем, если кто-то выключил.
+     * Стоковые настройки XGIMI (com.android.newsettings): в них быстрое меню (всплывает под нашей
+     * панелью) и FallbackHome — домашний экран на время загрузки. Без какого-нибудь такого экрана
+     * Android не завершает загрузку: 2026-11-06 выключенные настройки дали чёрный экран после ребута.
+     * Поэтому выключаем их, только если в лаунчере есть свой загрузочный экран (BootHomeActivity,
+     * launcher 0.4.1+), иначе — включаем обратно.
      */
-    private fun ensureStockSettingsOn() {
-        if (adb.run("pm list packages -d ${Config.STOCK_SETTINGS_PKG}").isNullOrBlank()) return
-        Logf.w("boot: ${Config.STOCK_SETTINGS_PKG} was disabled — enabling (FallbackHome is needed to boot)")
-        adb.run("pm enable ${Config.STOCK_SETTINGS_PKG}")
+    private fun syncStockSettings() {
+        val haveBootHome = adb.run("dumpsys package ${Config.LAUNCHER_PKG}").orEmpty().contains(Config.BOOT_HOME_CLASS)
+        val enabled = !adb.run("pm list packages -e ${Config.STOCK_SETTINGS_PKG}").isNullOrBlank()
+        if (haveBootHome && enabled) {
+            Logf.w("boot: own boot home present — disabling ${Config.STOCK_SETTINGS_PKG} (stock quick menu)")
+            adb.run("pm disable-user --user 0 ${Config.STOCK_SETTINGS_PKG}")
+        } else if (!haveBootHome && !enabled) {
+            Logf.w("boot: no own boot home — enabling ${Config.STOCK_SETTINGS_PKG} (FallbackHome is needed to boot)")
+            adb.run("pm enable ${Config.STOCK_SETTINGS_PKG}")
+        }
     }
 
     /**

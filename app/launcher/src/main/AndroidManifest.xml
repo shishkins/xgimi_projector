@@ -45,6 +45,23 @@
             </intent-filter>
         </activity>
 
+        <!-- домашний экран на время загрузки (до разблокировки пользователя) — вместо FallbackHome
+             стоковых настроек XGIMI; без такого экрана Android не завершает загрузку -->
+        <activity
+            android:name=".BootHomeActivity"
+            android:directBootAware="true"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.Hdmi">
+            <intent-filter android:priority="-1000">
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
