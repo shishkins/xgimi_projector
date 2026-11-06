@@ -128,6 +128,13 @@ class HomeActivity : Activity() {
         if (tab == Tab.APPS && !sheet.isShown) render(resetFocus = true)
         // агента мог убить режим ожидания XGIMI — главный экран поднимает его каждый раз
         (application as LauncherApp).startAgent()
+        main.removeCallbacks(wifiStuckCheck)
+        main.post(wifiStuckCheck)
+    }
+
+    override fun onPause() {
+        main.removeCallbacks(wifiStuckCheck)
+        super.onPause()
     }
 
     /** HOME, когда мы уже на главном экране: вкладка приложений, первая плитка. */
@@ -257,7 +264,32 @@ class HomeActivity : Activity() {
             addView(buttons, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = dp(26) })
         }
         content.addView(heroBlock, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(18) })
+
+        // зависший модуль Wi-Fi лечится только розеткой — говорим об этом под кнопкой Wi-Fi
+        wifiHint = Ui.text(this, getString(R.string.wifi_stuck), 17f).apply {
+            maxWidth = dp(560)
+            setPadding(dp(20), dp(12), dp(20), dp(12))
+            background = GradientDrawable().apply {
+                setColor(getColor(R.color.panel_bg))
+                cornerRadius = dp(18).toFloat()
+            }
+            visibility = View.GONE
+        }
+        root.addView(wifiHint, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(104)
+            marginEnd = dp(64)
+        })
         return root
+    }
+
+    private lateinit var wifiHint: TextView
+
+    /** Раз в несколько секунд, пока экран открыт: не завис ли Wi-Fi ([WifiStuck]). */
+    private val wifiStuckCheck = object : Runnable {
+        override fun run() {
+            wifiHint.visibility = if (WifiStuck.check(this@HomeActivity)) View.VISIBLE else View.GONE
+            main.postDelayed(this, WIFI_CHECK_MS)
+        }
     }
 
     private fun tabView(textRes: Int, which: Tab) = TextView(this).apply {
@@ -553,6 +585,7 @@ class HomeActivity : Activity() {
     private fun dp(v: Int) = Ui.dp(this, v)
 
     companion object {
+        private const val WIFI_CHECK_MS = 5_000L
         private const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         private const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         private const val AIRPLAY_PKG = "os.z7.airplay"

@@ -40,6 +40,12 @@ object Config {
     const val RECEIVER_WINDOW_AFTER_FAILURES = 4
     const val RECEIVER_NO_WINDOW_AFTER_BOOT_MS = 5 * 60_000L
 
+    /** Когда после загрузки проверить, не завис ли Wi-Fi ([WifiWatch]); драйвер грузится на ~14 с. */
+    const val WIFI_STUCK_CHECK_MS = 2 * 60_000L
+
+    /** Агент стартовал в эти минуты после загрузки — пишем в журнал и «Wi-Fi в порядке». */
+    const val WIFI_BOOT_WINDOW_MS = 10 * 60_000L
+
     /**
      * Стоковый каст XGIMI: внутри и AirPlay (waxrain, порт 7100), и Miracast.
      * Его AirPlay перехватывает подключения iPhone, поэтому в обычном режиме пакет выключен

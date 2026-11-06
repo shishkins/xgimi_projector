@@ -56,6 +56,7 @@
     <string name="wifi_connecting_short">Connecting…</string>
     <string name="wifi_turned_off">Wi-Fi is off</string>
     <string name="wifi_searching">Looking for networks…</string>
+    <string name="wifi_stuck">Wi-Fi is not responding. Unplug the projector for a minute, then turn it back on.</string>
     <string name="wifi_saved">Saved</string>
     <string name="wifi_secured">Secured</string>
     <string name="wifi_open">Open</string>

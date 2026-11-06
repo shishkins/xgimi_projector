@@ -36,6 +36,8 @@ class WifiActivity : Activity() {
     private val rescan = object : Runnable {
         override fun run() {
             @Suppress("DEPRECATION") wifi.startScan()
+            // у зависшего Wi-Fi событий нет — подсказку показываем по таймеру
+            if (WifiStuck.check(this@WifiActivity)) render()
             main.postDelayed(this, SCAN_EVERY_MS)
         }
     }
@@ -66,7 +68,7 @@ class WifiActivity : Activity() {
         val side = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         side.addView(Ui.icon(this, R.drawable.ic_wifi, 56))
         side.addView(Ui.text(this, getString(R.string.wifi), 40f).apply { setPadding(0, Ui.dp(context, 16), 0, 0) })
-        status = Ui.text(this, "", 18f, secondary = true).apply { maxLines = 2 }
+        status = Ui.text(this, "", 18f, secondary = true).apply { maxLines = 4 }
         side.addView(status, LinearLayout.LayoutParams(WRAP, WRAP).apply { topMargin = Ui.dp(this@WifiActivity, 8) })
         toggle = Ui.Row(this, null, getString(R.string.wifi))
         @Suppress("DEPRECATION")
@@ -111,6 +113,7 @@ class WifiActivity : Activity() {
         val on = wifi.isWifiEnabled
         toggle.setValue(getString(if (on) R.string.on else R.string.off))
         status.text = when {
+            WifiStuck.check(this) -> getString(R.string.wifi_stuck)
             connectingSsid != null -> getString(R.string.wifi_connecting, connectingSsid)
             else -> Wifi.status(this)
         }

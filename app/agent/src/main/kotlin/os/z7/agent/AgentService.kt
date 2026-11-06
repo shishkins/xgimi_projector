@@ -67,6 +67,23 @@ class AgentService : Service() {
         }
     }
 
+    /** Перезагрузка или выключение: записать состояние Wi-Fi и P2P ([WifiWatch]). */
+    private val shutdownReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val pending = goAsync()
+            Thread {
+                // своё соединение: общее может быть занято шагом сторожа
+                val bridge = AdbBridge(filesDir)
+                try {
+                    WifiWatch.onShutdown(this@AgentService, bridge)
+                } finally {
+                    bridge.close()
+                    pending.finish()
+                }
+            }.start()
+        }
+    }
+
     private val p2pReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (isInitialStickyBroadcast) return // старое состояние на момент регистрации
@@ -99,6 +116,7 @@ class AgentService : Service() {
         // Агент делает только критичное — watchdog каста (pidof/force-stop/monkey работают).
         registerReceiver(p2pReceiver, IntentFilter(WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION))
         registerReceiver(launcherUpdated, IntentFilter(Intent.ACTION_PACKAGE_REPLACED).apply { addDataScheme("package") })
+        registerReceiver(shutdownReceiver, IntentFilter(Intent.ACTION_SHUTDOWN))
         loopJob = scope.launch {
             // кнопки пульта — первыми: без службы долгое «меню» открывает китайское меню
             ensureKeyService()
@@ -118,6 +136,7 @@ class AgentService : Service() {
                 beacon.tick(enabled = beaconAllowed() && !miracastActive && !audio.isMusicActive && !airplayInUse())
                 castKeeper.ensureCast(miracastActive)
                 OwnMiracast.tick(this@AgentService, adb)
+                WifiWatch.tick(this@AgentService, adb)
                 val now = SystemClock.elapsedRealtime()
                 // прошивка после загрузки переписывает список служб спецвозможностей — возвращаем свою
                 if (now - lastKeysCheck >= Config.KEYS_CHECK_MS) {
@@ -295,6 +314,7 @@ class AgentService : Service() {
         scope.cancel()
         unregisterReceiver(p2pReceiver)
         unregisterReceiver(launcherUpdated)
+        unregisterReceiver(shutdownReceiver)
         adb.close()
         super.onDestroy()
     }

@@ -53,6 +53,7 @@
     <string name="wifi_connecting_short">Подключение…</string>
     <string name="wifi_turned_off">Wi-Fi выключен</string>
     <string name="wifi_searching">Ищу сети…</string>
+    <string name="wifi_stuck">Wi-Fi не отвечает. Выньте вилку проектора из розетки на минуту, затем включите снова.</string>
     <string name="wifi_saved">Сохранена</string>
     <string name="wifi_secured">Защищена</string>
     <string name="wifi_open">Открытая</string>
