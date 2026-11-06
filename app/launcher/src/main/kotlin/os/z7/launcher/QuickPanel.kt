@@ -64,7 +64,7 @@ class QuickPanel(private val service: Context) {
         // фон как у меню XGIMI: без плашки — тёмный слева, плавно уходит в прозрачность
         val scrimView = View(context).apply {
             background = GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(SHADE_SOLID, SHADE_SOLID, SHADE_SOLID, SHADE_SOLID, SHADE_MID, SHADE_END))
+                intArrayOf(SHADE_LEFT, SHADE_MID, SHADE_END))
         }
         // содержимое добавим следующим сообщением — окно с затемнением появляется сразу
         val panelView = FrameLayout(context)
@@ -298,12 +298,12 @@ class QuickPanel(private val service: Context) {
         val STOCK_RECHECK_MS = longArrayOf(150L, 300L, 450L, 600L, 750L, 1_000L)
         const val OPEN_SHIFT_DP = 28
         const val OPEN_SHIFT_MS = 120L
-        const val COVER_ON_CLOSE_MS = 800L
+        const val COVER_ON_CLOSE_MS = 0L
         const val SHADE_DP = 760
-        // под кнопками (до ~400dp) фон плотный: быстрое меню XGIMI, которое прошивка открывает тем же
-        // нажатием в этом месте, не просвечивает, пока гаснет; дальше — плавно в прозрачность
-        const val SHADE_SOLID = 0xF5040710.toInt()
-        const val SHADE_MID = 0xB3040710.toInt()
+        // быстрого меню XGIMI больше нет (стоковые настройки выключены, загрузку держит BootHomeActivity),
+        // поэтому фон — просто прозрачный градиент
+        const val SHADE_LEFT = 0xE6040710.toInt()
+        const val SHADE_MID = 0xA6040710.toInt()
         const val SHADE_END = 0x00040710
     }
 }
