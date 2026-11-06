@@ -186,6 +186,26 @@ object Gmpf {
                 .invoke(display, level.coerceIn(1, BRIGHTNESS_MAX).toByte())
         }
 
+        private val cecFrameCls by lazy { cls("com.xgimi.gmpf.rp.CecFrameDescription") }
+
+        /**
+         * Кадр HDMI-CEC прямо в HAL (GmTvManager.sendCecTxMsg) — мимо системного HdmiControlService,
+         * которому нужны системные права. Поле size — длина всего кадра: заголовок + код + данные
+         * (проверено на PS5 запросом <Give OSD Name>, 2026-11-06).
+         */
+        fun sendCec(destination: Int, opcode: Int, vararg operands: Int): Boolean {
+            val frame = cecFrameCls.getConstructor().newInstance()
+            val blocks = cecFrameCls.getField("blocks").get(frame)!!
+            val header = blocks.javaClass.getField("header").get(blocks)!!
+            header.javaClass.getField("destination").setByte(header, destination.toByte())
+            header.javaClass.getField("initiator").setByte(header, CEC_TV_ADDRESS.toByte())
+            blocks.javaClass.getField("opCode").setByte(blocks, opcode.toByte())
+            val data = blocks.javaClass.getField("operand").get(blocks) as ByteArray
+            operands.forEachIndexed { i, v -> data[i] = v.toByte() }
+            cecFrameCls.getField("size").setByte(frame, (2 + operands.size).toByte())
+            return bool("GmTvManager", "sendCecTxMsg", frame)
+        }
+
         private val managers = HashMap<String, Pair<Class<*>, Any>>()
 
         /**
@@ -231,6 +251,9 @@ object Gmpf {
     }
 
     const val BRIGHTNESS_MAX = 10
+
+    /** Логический адрес CEC проектора (телевизор). */
+    const val CEC_TV_ADDRESS = 0
 
     /** Шагов уменьшения на Z7X (getAllZoomStep.zoomOutMaxStep) — если прошивка не ответила. */
     const val ZOOM_MAX_DEFAULT = 38

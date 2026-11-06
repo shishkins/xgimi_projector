@@ -16,6 +16,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
@@ -46,6 +47,8 @@ class HdmiActivity : Activity() {
     private var port = 1
     private var gameOn = false
     private var focusRequest: AudioFocusRequest? = null
+    /** Пульт → приставка по HDMI-CEC; «Назад» удержанием — выход. */
+    private val remote = CecRemote(this) { onBackPressed() }
 
     private val retune = Runnable {
         if (!hasVideo && retries < MAX_RETRIES) {
@@ -156,8 +159,15 @@ class HdmiActivity : Activity() {
         waiting.animate().alpha(if (signal) 0f else 1f).setDuration(250).start()
         if (signal) {
             main.removeCallbacks(retune)
-            showInfo()
+            // дочерний вход CEC прошивка заводит, когда устройство ответило, — ищем при каждом появлении сигнала
+            remote.device = inputId?.let { CecRemote.find(this, it) }
+            showInfo(hint = remote.device?.let { getString(R.string.hdmi_remote_hint, it.name.ifEmpty { "HDMI" }) })
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (hasVideo && remote.dispatch(event)) return true
+        return super.dispatchKeyEvent(event)
     }
 
     override fun onStop() {
@@ -207,7 +217,7 @@ class HdmiActivity : Activity() {
     }
 
     /** Плашка «HDMI · 1920×1080 · 60 Hz» на несколько секунд после появления картинки. */
-    private fun showInfo(extra: String? = null) {
+    private fun showInfo(extra: String? = null, hint: String? = null) {
         val parts = mutableListOf("HDMI")
         extra?.let { parts += it }
         try {
@@ -218,10 +228,10 @@ class HdmiActivity : Activity() {
             }
         } catch (_: Exception) {
         }
-        info.text = parts.joinToString("  ·  ")
+        info.text = parts.joinToString("  ·  ") + (hint?.let { "\n$it" } ?: "")
         info.animate().alpha(1f).setDuration(250).start()
         main.removeCallbacks(hideInfo)
-        main.postDelayed(hideInfo, INFO_MS)
+        main.postDelayed(hideInfo, if (hint != null) HINT_MS else INFO_MS)
     }
 
     private fun requestAudioFocus() {
@@ -269,6 +279,7 @@ class HdmiActivity : Activity() {
         private const val RETUNE_MS = 3_000L
         private const val MAX_RETRIES = 3
         private const val INFO_MS = 4_000L
+        private const val HINT_MS = 6_000L
         private const val SIGNAL_POLL_MS = 1_000L
 
         /** Первый вход HDMI (без дочерних входов HDMI-CEC). */

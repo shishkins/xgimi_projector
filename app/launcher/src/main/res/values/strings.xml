@@ -175,6 +175,7 @@
     <string name="game_off">Off</string>
     <string name="hdmi_game_on">Game mode — low latency</string>
     <string name="hdmi_game_off">Game mode off</string>
+    <string name="hdmi_remote_hint">Remote controls %1$s  ·  hold Back to exit</string>
     <string name="picture_custom_only">Manual picture settings work only in the Custom mode</string>
     <string name="picture_overlay_back">Back — close</string>
     <string name="picture_live_hint">To see changes live: start a video, hold the Menu button and choose Picture</string>

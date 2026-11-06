@@ -173,6 +173,7 @@
     <string name="game_off">Выкл.</string>
     <string name="hdmi_game_on">Игровой режим — низкая задержка</string>
     <string name="hdmi_game_off">Игровой режим выключен</string>
+    <string name="hdmi_remote_hint">Пульт управляет %1$s  ·  удерживайте Назад — выход</string>
     <string name="picture_custom_only">Ручные настройки картинки работают только в режиме «Свой»</string>
     <string name="picture_overlay_back">Назад — закрыть</string>
     <string name="picture_live_hint">Чтобы видеть изменения вживую: включите видео, зажмите кнопку «Меню» и выберите «Изображение»</string>
