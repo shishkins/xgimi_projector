@@ -1,7 +1,9 @@
 package os.z7.launcher
 
+import android.app.Activity
 import android.app.Application
 import android.content.Intent
+import android.os.Bundle
 import android.util.Log
 
 /**
@@ -14,6 +16,16 @@ class LauncherApp : Application() {
     override fun onCreate() {
         super.onCreate()
         startAgent()
+        // чужая клавиатура, показанная «принудительно», не прячется сама при уходе на наш экран
+        registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+            override fun onActivityResumed(activity: Activity) = KeyboardGuard.attach(activity)
+            override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        })
     }
 
     fun startAgent() {
