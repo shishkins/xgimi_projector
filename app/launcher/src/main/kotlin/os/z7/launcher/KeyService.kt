@@ -42,6 +42,7 @@ class KeyService : AccessibilityService() {
     }
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) lastKeyDown = event.eventTime
         if (!::panel.isInitialized) return false
         when (event.keyCode) {
             KEY_QUICK_MENU -> {
@@ -69,6 +70,7 @@ class KeyService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val fromSystemUi = event.packageName == XGIMI_SYSTEMUI
         val cls = event.className?.toString()
+        onKeyboardWindow(event, cls)
         onMiracastWindow(event, cls)
         onStockHdmi(event)
         onStockMenu(event, cls)
@@ -78,6 +80,36 @@ class KeyService : AccessibilityService() {
             // пользователь ушёл в другое окно — калибровку прервали
             !fromSystemUi && event.packageName != packageName && cover.mode == AkCover.Mode.RUNNING -> cover.hide()
         }
+    }
+
+    /** Последнее нажатие пульта (время события, uptime). */
+    private var lastKeyDown = 0L
+    /** Приложение в полноэкранном окне на переднем плане и когда оно сменилось. */
+    private var frontPackage: String? = null
+    private var frontChangedAt = 0L
+
+    /**
+     * Клавиатура выскакивает сама, когда возвращаешься в приложение с полем ввода в фокусе:
+     * система при переходе вперёд в окно (ADJUST_RESIZE, большой экран) показывает её «неявно»,
+     * а LeanKeyboard не отказывается (2026-11-06, киноприложение владельца). Если после смены
+     * приложения пульт не нажимали — закрываем её, как «Назад». По OK на поле она открывается
+     * как обычно: нажатие было позже смены окна.
+     */
+    private fun onKeyboardWindow(event: AccessibilityEvent, cls: String?) {
+        val pkg = event.packageName?.toString() ?: return
+        if (cls == IME_WINDOW_CLASS) {
+            val changedAt = frontChangedAt
+            if (lastKeyDown < changedAt && event.eventTime - changedAt < AUTO_KEYBOARD_MS) {
+                // даём окну клавиатуры встать, иначе «Назад» достанется приложению
+                main.postDelayed({
+                    if (lastKeyDown < changedAt) performGlobalAction(GLOBAL_ACTION_BACK)
+                }, AUTO_KEYBOARD_CLOSE_DELAY_MS)
+            }
+            return
+        }
+        if (!event.isFullScreen || pkg == frontPackage) return
+        frontPackage = pkg
+        frontChangedAt = event.eventTime
     }
 
     /**
@@ -178,6 +210,12 @@ class KeyService : AccessibilityService() {
         private const val STOCK_HDMI_PKG = "com.xgimi.xhplayer"
         private const val STOCK_SETTINGS_PKG = "com.android.newsettings"
         private const val HDMI_REDIRECT_PAUSE_MS = 1_000L
+
+        /** Окно любой экранной клавиатуры (InputMethodService). */
+        private const val IME_WINDOW_CLASS = "android.inputmethodservice.SoftInputWindow"
+        /** Клавиатура появилась так скоро после смены приложения — значит, сама (у нас ~0,2 с). */
+        private const val AUTO_KEYBOARD_MS = 1_500L
+        private const val AUTO_KEYBOARD_CLOSE_DELAY_MS = 150L
 
         /** Запущенная служба: окна поверх всего (трапеция) может показать только она. */
         @Volatile var instance: KeyService? = null

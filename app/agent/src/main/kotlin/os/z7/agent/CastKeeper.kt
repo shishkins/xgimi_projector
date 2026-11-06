@@ -2,6 +2,7 @@ package os.z7.agent
 
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
 
 /**
  * Держит беспроводной каст в порядке:
@@ -18,6 +19,9 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
     @Volatile
     var lastState: String = "init"
         private set
+
+    /** Неудачных запусков без окна подряд (см. [Config.RECEIVER_WINDOW_AFTER_FAILURES]). */
+    private var headlessFailures = 0
 
     /** Наш приёмник запущен? (по наличию процесса) */
     private fun receiverRunning(): Boolean {
@@ -84,9 +88,20 @@ class CastKeeper(private val context: Context, private val adb: AdbBridge) {
             }
             Logf.w("ensureCast: receiver down — starting it in background")
             startHeadless()
-            if (!awaitReceiver(Config.RECEIVER_HEADLESS_WAIT_MS)) {
+            if (awaitReceiver(Config.RECEIVER_HEADLESS_WAIT_MS)) {
+                headlessFailures = 0
+            } else {
+                headlessFailures++
+                if (headlessFailures < Config.RECEIVER_WINDOW_AFTER_FAILURES ||
+                    SystemClock.elapsedRealtime() < Config.RECEIVER_NO_WINDOW_AFTER_BOOT_MS) {
+                    // без окна — повторим на следующем шаге сторожа
+                    lastState = "starting"
+                    Logf.w("ensureCast: receiver not up yet (attempt $headlessFailures) — retrying in background")
+                    return
+                }
                 // запасной путь: через окно приёмника, и сразу назад на главный экран
-                Logf.w("ensureCast: headless start failed — launching activity")
+                Logf.w("ensureCast: headless start failed $headlessFailures times — launching activity")
+                headlessFailures = 0
                 adb.run("monkey -p ${Config.RECEIVER_PKG} -c android.intent.category.LAUNCHER 1")
                 Thread.sleep(3_000)
                 leaveReceiverScreen()

@@ -28,8 +28,17 @@ object Config {
     /** Действие, по которому BootReceiver приёмника стартует сервер без окна. */
     const val RECEIVER_START_ACTION = "android.intent.action.QUICKBOOT_POWERON"
 
-    /** Сколько ждать запуска приёмника без окна, прежде чем открыть его окно. */
+    /** Сколько ждать запуска приёмника без окна за одну попытку. */
     const val RECEIVER_HEADLESS_WAIT_MS = 12_000L
+
+    /**
+     * Окно приёмника (оно мелькает на экране) — только крайняя мера: после стольких неудачных
+     * попыток без окна подряд и не раньше [RECEIVER_NO_WINDOW_AFTER_BOOT_MS] после загрузки.
+     * После включения в розетку система первые минуты занята, и запуск без окна просто опаздывает
+     * (2026-11-06: окно AirPlay мелькало при каждом холодном старте).
+     */
+    const val RECEIVER_WINDOW_AFTER_FAILURES = 4
+    const val RECEIVER_NO_WINDOW_AFTER_BOOT_MS = 5 * 60_000L
 
     /**
      * Стоковый каст XGIMI: внутри и AirPlay (waxrain, порт 7100), и Miracast.
