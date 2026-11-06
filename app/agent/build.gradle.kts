@@ -16,8 +16,8 @@ android {
         applicationId = "os.z7.agent"
         minSdk = 28
         targetSdk = 28
-        versionCode = 32
-        versionName = "0.3.18"
+        versionCode = 33
+        versionName = "0.3.19"
     }
 
     signingConfigs {

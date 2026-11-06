@@ -131,7 +131,8 @@ object Config {
     const val KEYS_REBIND_AFTER_UPDATE_MS = 10_000L
 
     /** Свой загрузочный HOME лаунчера (вместо FallbackHome стока); пока его нет — стоковые настройки не выключать. */
-    const val BOOT_HOME_CLASS = "os.z7.launcher.BootHomeActivity"
+    /** Как dumpsys package пишет компонент: «os.z7.launcher/.BootHomeActivity» (короткая форма). */
+    const val BOOT_HOME_CLASS = ".BootHomeActivity"
 
     /** Стоковые настройки XGIMI: быстрое меню и FallbackHome (нужен для загрузки, если нет своего). */
     const val STOCK_SETTINGS_PKG = "com.android.newsettings"
